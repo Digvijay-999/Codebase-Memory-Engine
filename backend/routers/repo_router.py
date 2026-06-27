@@ -6,6 +6,8 @@ from services.repo_service import clone_repository
 from services.file_service import scan_repository
 from services.content_service import read_repository
 from services.chunk_service import chunk_documents
+from schemas.embedding_schema import EmbeddingRequest
+from services.embedding_service import create_embedding
 
 router = APIRouter()
 
@@ -59,4 +61,14 @@ def get_chunks(repo_name: str):
         "repository": repo_name,
         "chunks": len(chunks),
         "data": chunks[:5]
+    }
+
+@router.post("/embed")
+def embed_text(request: EmbeddingRequest):
+
+    embedding = create_embedding(request.text)
+
+    return {
+        "dimensions": len(embedding),
+        "embedding": embedding[:10]
     }
