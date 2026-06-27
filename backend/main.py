@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from services.repo_service import clone_repository
 from services.file_service import scan_repository
+from services.content_service import read_repository
 
 app = FastAPI()
 
@@ -17,6 +18,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
 @app.get("/scan/{repo_name}")
 def scan_repo(repo_name: str):
 
@@ -29,6 +32,22 @@ def scan_repo(repo_name: str):
         "total_files": len(files),
         "files": files,
     }
+
+
+@app.get("/content/{repo_name}")
+def get_content(repo_name: str):
+
+    repo_path = f"repos/{repo_name}"
+
+    files = scan_repository(repo_path)
+
+    docs = read_repository(repo_path, files)
+
+    return {
+        "repository": repo_name,
+        "documents": docs
+    }
+
 
 class RepoRequest(BaseModel):
     repo_url: str
