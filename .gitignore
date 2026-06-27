@@ -1,0 +1,23 @@
+# Python
+backend/venv/
+backend/__pycache__/
+*.pyc
+
+# React
+frontend/node_modules/
+frontend/dist/
+
+# Environment files
+.env
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# AI repos that we'll clone later
+backend/repos/
+
+# Python cache
+.pytest_cache/
