@@ -1,10 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
-from services.repo_service import clone_repository
-from services.file_service import scan_repository
-from services.content_service import read_repository
+from routers.repo_router import router
 
 app = FastAPI()
 
@@ -19,40 +16,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.get("/scan/{repo_name}")
-def scan_repo(repo_name: str):
-
-    repo_path = f"repos/{repo_name}"
-
-    files = scan_repository(repo_path)
-
-    return {
-        "repository": repo_name,
-        "total_files": len(files),
-        "files": files,
-    }
-
-
-@app.get("/content/{repo_name}")
-def get_content(repo_name: str):
-
-    repo_path = f"repos/{repo_name}"
-
-    files = scan_repository(repo_path)
-
-    docs = read_repository(repo_path, files)
-
-    return {
-        "repository": repo_name,
-        "documents": docs
-    }
-
-
-class RepoRequest(BaseModel):
-    repo_url: str
-
-
-@app.post("/clone")
-def clone_repo(request: RepoRequest):
-    return clone_repository(request.repo_url)
+app.include_router(router)
