@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from services.repo_service import clone_repository
+from services.file_service import scan_repository
 
 app = FastAPI()
 
@@ -16,7 +17,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+@app.get("/scan/{repo_name}")
+def scan_repo(repo_name: str):
 
+    repo_path = f"repos/{repo_name}"
+
+    files = scan_repository(repo_path)
+
+    return {
+        "repository": repo_name,
+        "total_files": len(files),
+        "files": files,
+    }
 
 class RepoRequest(BaseModel):
     repo_url: str
