@@ -8,6 +8,7 @@ from services.content_service import read_repository
 from services.chunk_service import chunk_documents
 from schemas.embedding_schema import EmbeddingRequest
 from services.embedding_service import create_embedding
+from services.embedding_service import store_chunks
 
 router = APIRouter()
 
@@ -71,4 +72,21 @@ def embed_text(request: EmbeddingRequest):
     return {
         "dimensions": len(embedding),
         "embedding": embedding[:10]
+    }
+
+@router.post("/store/{repo_name}")
+def store_repo(repo_name: str):
+
+    repo_path = f"repos/{repo_name}"
+
+    files = scan_repository(repo_path)
+
+    docs = read_repository(repo_path, files)
+
+    chunks = chunk_documents(docs)
+
+    total = store_chunks(chunks)
+
+    return {
+        "stored_chunks": total
     }
