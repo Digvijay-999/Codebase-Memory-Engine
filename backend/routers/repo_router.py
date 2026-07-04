@@ -9,6 +9,10 @@ from services.chunk_service import chunk_documents
 from schemas.embedding_schema import EmbeddingRequest
 from services.embedding_service import create_embedding
 from services.embedding_service import store_chunks
+from schemas.search_schema import SearchRequest
+from services.embedding_service import search_chunks
+from services.llm_service import ask_llm
+from schemas.ask_schema import AskRequest
 
 router = APIRouter()
 
@@ -64,6 +68,7 @@ def get_chunks(repo_name: str):
         "data": chunks[:5]
     }
 
+
 @router.post("/embed")
 def embed_text(request: EmbeddingRequest):
 
@@ -73,6 +78,7 @@ def embed_text(request: EmbeddingRequest):
         "dimensions": len(embedding),
         "embedding": embedding[:10]
     }
+
 
 @router.post("/store/{repo_name}")
 def store_repo(repo_name: str):
@@ -89,4 +95,29 @@ def store_repo(repo_name: str):
 
     return {
         "stored_chunks": total
+    }
+
+
+@router.post("/search")
+def search(request: SearchRequest):
+
+    results = search_chunks(request.query)
+
+    return results
+
+
+@router.post("/ask")
+def ask(request: AskRequest):
+
+    chunks = search_chunks(request.question)
+
+    context = "\n\n".join(chunks)
+
+    answer = ask_llm(
+        request.question,
+        context
+    )
+
+    return {
+        "answer": answer
     }

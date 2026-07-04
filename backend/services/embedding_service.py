@@ -3,7 +3,7 @@ from sentence_transformers import SentenceTransformer
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-client = chromadb.Client()
+client = chromadb.PersistentClient(path="./chroma_db")
 
 collection = client.get_or_create_collection(
     name="codebase"
@@ -43,4 +43,4 @@ def search_chunks(query, n_results=5):
         n_results=n_results
     )
 
-    return results
+    return results["documents"][0]

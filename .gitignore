@@ -21,3 +21,6 @@ backend/repos/
 
 # Python cache
 .pytest_cache/
+
+# ChromaDB
+backend/chroma_db/
