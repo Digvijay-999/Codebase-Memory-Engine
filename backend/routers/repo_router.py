@@ -1,4 +1,7 @@
-from fastapi import APIRouter
+import os
+
+from fastapi import APIRouter, HTTPException
+
 
 from schemas.repo_schema import RepoRequest
 
@@ -15,6 +18,8 @@ from services.llm_service import ask_llm
 from schemas.ask_schema import AskRequest
 from schemas.repo_name_schema import RepoNameRequest
 from services.llm_service import explain_repository
+from services.content_service import get_repository_context
+from services.llm_service import generate_readme
 
 router = APIRouter()
 
@@ -28,6 +33,12 @@ def clone_repo(request: RepoRequest):
 def scan_repo(repo_name: str):
 
     repo_path = f"repos/{repo_name}"
+
+    if not os.path.exists(repo_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Repository not found."
+        )
 
     files = scan_repository(repo_path)
 
@@ -43,6 +54,12 @@ def get_content(repo_name: str):
 
     repo_path = f"repos/{repo_name}"
 
+    if not os.path.exists(repo_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Repository not found."
+        )
+
     files = scan_repository(repo_path)
 
     docs = read_repository(repo_path, files)
@@ -57,6 +74,12 @@ def get_content(repo_name: str):
 def get_chunks(repo_name: str):
 
     repo_path = f"repos/{repo_name}"
+
+    if not os.path.exists(repo_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Repository not found."
+        )
 
     files = scan_repository(repo_path)
 
@@ -87,6 +110,12 @@ def store_repo(repo_name: str):
 
     repo_path = f"repos/{repo_name}"
 
+    if not os.path.exists(repo_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Repository not found."
+        )
+
     files = scan_repository(repo_path)
 
     docs = read_repository(repo_path, files)
@@ -96,7 +125,8 @@ def store_repo(repo_name: str):
     total = store_chunks(chunks)
 
     return {
-        "stored_chunks": total
+    "success": True,
+    "stored_chunks": total
     }
 
 
@@ -105,7 +135,10 @@ def search(request: SearchRequest):
 
     results = search_chunks(request.query)
 
-    return results
+    return {
+        "success": True,
+        "results": results
+    }
 
 
 @router.post("/ask")
@@ -140,16 +173,17 @@ def explain(request: RepoNameRequest):
 
     repo_path = f"repos/{request.repo_name}"
 
+    if not os.path.exists(repo_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Repository not found."
+        )
+
     files = scan_repository(repo_path)
 
     docs = read_repository(repo_path, files)
 
-    chunks = chunk_documents(docs)
-
-    context = "\n\n".join(
-        chunk["content"]
-        for chunk in chunks[:15]
-    )
+    context = get_repository_context(docs)
 
     explanation = explain_repository(context)
 
@@ -157,4 +191,29 @@ def explain(request: RepoNameRequest):
         "success": True,
         "repository": request.repo_name,
         "explanation": explanation
+    }
+
+
+@router.post("/generate-readme")
+def generate_repo_readme(request: RepoNameRequest):
+
+    repo_path = f"repos/{request.repo_name}"
+
+    if not os.path.exists(repo_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Repository not found."
+        )
+
+    files = scan_repository(repo_path)
+
+    docs = read_repository(repo_path, files)
+
+    context = get_repository_context(docs)
+
+    readme = generate_readme(context)
+
+    return {
+        "success": True,
+        "readme": readme
     }

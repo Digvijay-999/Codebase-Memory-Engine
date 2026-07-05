@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
+from fastapi import HTTPException
 
 load_dotenv()
 
@@ -30,9 +31,14 @@ Question:
 {question}
 """
 
-    response = model.generate_content(prompt)
-
-    return response.text
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gemini Error: {str(e)}"
+        )
 
 
 def explain_repository(context: str):
@@ -53,6 +59,51 @@ Repository Context:
 {context}
 """
 
-    response = model.generate_content(prompt)
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gemini Error: {str(e)}"
+        )
 
-    return response.text
+
+def generate_readme(context: str):
+
+    prompt = f"""
+You are an expert software engineer.
+
+Generate a professional GitHub README.md for this repository.
+
+Include:
+
+# Project Name
+
+## Overview
+
+## Features
+
+## Tech Stack
+
+## Installation
+
+## Usage
+
+## Folder Structure
+
+## Contributing
+
+Repository Context:
+
+{context}
+"""
+
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gemini Error: {str(e)}"
+        )
