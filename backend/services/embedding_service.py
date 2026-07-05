@@ -28,7 +28,13 @@ def store_chunks(chunks):
     collection.add(
         ids=ids,
         documents=documents,
-        embeddings=embeddings
+        embeddings=embeddings,
+        metadatas=[
+            {
+                "file": chunk["file"]
+            }
+            for chunk in chunks
+        ]
     )
 
     return len(ids)
@@ -43,4 +49,7 @@ def search_chunks(query, n_results=5):
         n_results=n_results
     )
 
-    return results["documents"][0]
+    return {
+        "documents": results["documents"][0],
+        "metadatas": results["metadatas"][0]
+    }

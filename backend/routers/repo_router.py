@@ -13,6 +13,8 @@ from schemas.search_schema import SearchRequest
 from services.embedding_service import search_chunks
 from services.llm_service import ask_llm
 from schemas.ask_schema import AskRequest
+from schemas.repo_name_schema import RepoNameRequest
+from services.llm_service import explain_repository
 
 router = APIRouter()
 
@@ -109,15 +111,50 @@ def search(request: SearchRequest):
 @router.post("/ask")
 def ask(request: AskRequest):
 
-    chunks = search_chunks(request.question)
+    results = search_chunks(request.question)
 
-    context = "\n\n".join(chunks)
+    context = "\n\n".join(results["documents"])
 
     answer = ask_llm(
         request.question,
         context
     )
 
+    sources = []
+
+    for metadata in results["metadatas"]:
+        file = metadata["file"]
+
+        if file not in sources:
+            sources.append(file)
+
     return {
-        "answer": answer
+        "success": True,
+        "answer": answer,
+        "sources": sources
+    }
+
+
+@router.post("/explain")
+def explain(request: RepoNameRequest):
+
+    repo_path = f"repos/{request.repo_name}"
+
+    files = scan_repository(repo_path)
+
+    docs = read_repository(repo_path, files)
+
+    chunks = chunk_documents(docs)
+
+    context = "\n\n".join(
+        chunk["content"]
+        for chunk in chunks[:15]
+    )
+
+    explanation = explain_repository(context)
+
+    return {
+        "success": True,
+        "repository": request.repo_name,
+        "explanation": explanation
     }

@@ -33,3 +33,26 @@ Question:
     response = model.generate_content(prompt)
 
     return response.text
+
+
+def explain_repository(context: str):
+
+    prompt = f"""
+You are an expert software architect.
+
+Based ONLY on the repository context below, explain:
+
+1. Purpose of the project
+2. Tech Stack
+3. Folder Structure
+4. Architecture
+5. Main Components
+
+Repository Context:
+
+{context}
+"""
+
+    response = model.generate_content(prompt)
+
+    return response.text
