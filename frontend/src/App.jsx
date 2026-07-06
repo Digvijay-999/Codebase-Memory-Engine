@@ -1,29 +1,17 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
+import { LandingPage } from "./pages/LandingPage"
+import { Toaster } from "sonner"
+import "./App.css"
 
 function App() {
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    axios
-      .get("http://127.0.0.1:8000/")
-      .then((res) => setMessage(res.data.message))
-      .catch((err) => console.log(err));
-  }, []);
-
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-        fontSize: "32px",
-      }}
-    >
-      {message}
-    </div>
-  );
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+      </Routes>
+      <Toaster theme="dark" position="bottom-right" />
+    </Router>
+  )
 }
 
-export default App;
+export default App
