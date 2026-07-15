@@ -1,50 +1,34 @@
-import { motion } from "framer-motion"
-import { Sparkles } from "lucide-react"
-import { Button } from "../ui/Button"
+import React from 'react';
+import { Container, Section } from '../ui/Layout';
+import { Button } from '../ui/Button';
+import { NeonButton } from '../ui/NeonButton';
+import { ScrollReveal } from '../ui/ScrollReveal';
+import { Link } from 'react-router-dom';
 
 export function CTA() {
   return (
-    <section className="py-36 bg-[#080b10] relative overflow-hidden">
-      {/* Matte black soft radial spotlight */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-accent/3 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute inset-0 border-t border-white/5 pointer-events-none" />
-      
-      <div className="max-w-4xl mx-auto px-6 text-center relative z-10 select-none">
-        <motion.h2 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ ease: [0.16, 1, 0.3, 1], duration: 0.8 }}
-          className="text-4xl md:text-6xl font-bold tracking-tight text-foreground leading-[1.1] mb-8"
-        >
-          Ready to forge understanding?
-        </motion.h2>
-        <motion.p 
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.1, ease: [0.16, 1, 0.3, 1], duration: 0.8 }}
-          className="text-base md:text-lg text-[#797f80] font-light max-w-xl mx-auto mb-14 leading-relaxed"
-        >
-          Join software engineering teams using local context to query, build, and document their architectures.
-        </motion.p>
-        
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.2, ease: [0.16, 1, 0.3, 1], duration: 0.8 }}
-        >
-          <Button 
-            size="xl" 
-            variant="neon" 
-            magnetic={true} 
-            className="gap-2.5 font-semibold text-xs tracking-wider uppercase"
-          >
-            Launch Workspace <Sparkles size={13} className="text-[#080b10]" />
-          </Button>
-        </motion.div>
+    <Section className="bg-bg relative">
+      {/* Background glow contained within Section bounds safely without clipping content */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute bottom-[-20%] left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[radial-gradient(circle_at_center,var(--surface-nested)_0%,transparent_70%)] opacity-60" />
       </div>
-    </section>
-  )
+
+      <Container className="relative z-10 text-center py-24 md:py-32">
+        <ScrollReveal>
+          <span className="text-eyebrow text-text-muted block mb-4">Get Started</span>
+          <h2 className="text-section text-text-primary mb-6 max-w-4xl mx-auto">
+            Ready to understand your codebase?
+          </h2>
+          <p className="text-body-large text-text-secondary mx-auto mb-10">
+            Connect your repository and get full architectural visibility in minutes.
+          </p>
+          <Link to="/chat">
+            <NeonButton className="px-12">
+              Launch Workspace
+            </NeonButton>
+          </Link>
+        </ScrollReveal>
+      </Container>
+    </Section>
+  );
 }

@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-heading: "Space Grotesk", "Geist", "Inter", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", monospace;
+
+  /* Spacing Scale */
+  --spacing-8: 8px;
+  --spacing-16: 16px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-40: 40px;
+  --spacing-56: 56px;
+  --spacing-80: 80px;
+
+  /* Border Radius */
+  --radius-cards: 20px;
+  --radius-buttons: 800px;
+}
+
+@layer base {
+  :root {
+    --bg: #080B10; /* Void Canvas */
+    --surface: #1B232A; /* Carbon Plate - Card surface */
+    --surface-elevated: #242D34; /* Obsidian - Nested surface */
+    --surface-hover: #2C353E; /* Iron Edge - Hover surface */
+    --border: #323A42; /* Steel Border */
+    --text-primary: #F2F2F2;
+    --text-secondary: #8C949C;
+    --text-muted: #6F7680;
+    --accent: #FFFFFF;
+  }
+
+  html {
+    color-scheme: dark;
+    background-color: var(--bg);
+    color: var(--text-primary);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: -0.017em;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .text-eyebrow {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.094em;
+  }
+
+  .text-hero {
+    font-family: var(--font-heading);
+    font-size: clamp(56px, 6vw, 88px);
+    font-weight: 300;
+    letter-spacing: 0.056em;
+    line-height: 0.96;
+  }
+
+  .text-section {
+    font-family: var(--font-heading);
+    font-size: 56px;
+    font-weight: 300;
+    letter-spacing: 0.056em;
+    line-height: 1.1;
+  }
+
+  .text-card-heading {
+    font-family: var(--font-heading);
+    font-size: 32px;
+    font-weight: 300;
+    letter-spacing: 0.056em;
+    line-height: 1.1;
+  }
+
+  .text-body-large {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: -0.017em;
+    max-width: 520px;
+  }
+
+  .text-meta {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+}

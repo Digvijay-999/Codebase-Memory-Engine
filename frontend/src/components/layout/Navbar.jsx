@@ -1,109 +1,224 @@
-import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Sparkles, Terminal } from "lucide-react"
-import { Button } from "../ui/Button"
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { Button } from '../ui/Button';
 
-const navItems = [
-  { name: "How it Works", href: "#how-it-works" },
-  { name: "Features", href: "#features" },
-  { name: "Technology", href: "#tech" },
-  { name: "Demo", href: "#demo" }
-]
+const NAV_ITEMS = [
+  { label: 'Product', path: '/', id: 'hero' },
+  { label: 'Features', path: '/#features', id: 'features' },
+  { label: 'How It Works', path: '/#architecture', id: 'architecture' },
+  { label: 'Demo', path: '/#demo', id: 'demo' },
+  { label: 'GitHub', path: 'https://github.com', id: 'github', external: true },
+];
 
 export function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
-  const [activeTab, setActiveTab] = useState(null)
-  const [hoveredTab, setHoveredTab] = useState(null)
+  const location = useLocation();
+  const reducedMotion = useReducedMotion();
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('hero');
 
+  // Handle Scroll for appearing
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
-    }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+      setScrolled(window.scrollY > 20);
+    };
+    
+    handleScroll();
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Handle Active Section via IntersectionObserver
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntries = entries.filter(entry => entry.isIntersecting);
+        if (visibleEntries.length > 0) {
+          visibleEntries.sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+          setActiveSection(visibleEntries[0].target.id);
+        } else if (window.scrollY < 100) {
+           setActiveSection('hero');
+        }
+      },
+      { rootMargin: '-20% 0px -40% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+
+    NAV_ITEMS.forEach(item => {
+      if (!item.external) {
+        const el = document.getElementById(item.id);
+        if (el) observer.observe(el);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [location.pathname]);
+
+  const currentPath = location.pathname + location.hash;
 
   return (
-    <motion.header
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className={`fixed top-0 left-0 right-0 z-50 flex justify-center pt-4 transition-all duration-500 ${
-        scrolled ? "pt-2" : "pt-6"
-      }`}
-    >
-      <nav
-        className={`flex items-center justify-between px-6 py-2.5 rounded-full border transition-all duration-500 ${
-          scrolled 
-            ? "bg-[#1b232a]/80 backdrop-blur-2xl border-white/5 w-[90%] max-w-5xl shadow-[0_12px_40px_rgba(0,0,0,0.6)]" 
-            : "bg-[#1b232a]/30 backdrop-blur-md border-white/5 w-full max-w-6xl"
-        }`}
+    <AnimatePresence>
+      <motion.header 
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: scrolled ? 0 : -100, opacity: scrolled ? 1 : 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed top-6 left-0 right-0 z-50 flex justify-center pointer-events-none px-4"
       >
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 group cursor-pointer">
-          <div className="w-8 h-8 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-background transition-all duration-300">
-            <Terminal size={14} className="group-hover:rotate-6 transition-transform" />
-          </div>
-          <span className="font-semibold text-base tracking-tight text-foreground group-hover:text-accent transition-colors">
-            ContextForge
-          </span>
-        </div>
+        <div className="w-full max-w-[1240px]">
+          <nav className="pointer-events-auto flex items-center justify-between px-6 h-[72px] rounded-full bg-[#11161C]/80 backdrop-blur-md border border-[#232A32] shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+            
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-3 group" onClick={() => setMobileMenuOpen(false)}>
+              <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center">
+                <div className="w-4 h-4 bg-[#080B10] rounded-sm" />
+              </div>
+              <span className="font-heading font-semibold text-[#F3F4F6] tracking-tight text-lg">ContextForge</span>
+            </Link>
 
-        {/* Tubelight Navigation Menu */}
-        <div className="hidden md:flex items-center gap-1.5 bg-[#080b10]/40 border border-white/5 px-2 py-1 rounded-full relative">
-          {navItems.map((item) => {
-            const isHovered = hoveredTab === item.name
-            const isActive = activeTab === item.name
-            return (
-              <a
-                key={item.name}
-                href={item.href}
-                className={`relative px-4 py-1.5 text-xs font-medium tracking-wide transition-all duration-300 rounded-full ${
-                  isActive || isHovered ? "text-foreground" : "text-[#797f80]"
-                }`}
-                onMouseEnter={() => setHoveredTab(item.name)}
-                onMouseLeave={() => setHoveredTab(null)}
-                onClick={() => setActiveTab(item.name)}
-              >
-                {/* Sliding indicator background */}
-                <AnimatePresence>
-                  {isHovered && (
-                    <motion.div
-                      layoutId="nav-pill"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                      className="absolute inset-0 bg-[#3e484e]/30 rounded-full z-0"
-                    />
-                  )}
-                </AnimatePresence>
-
-                {/* Tubelight Glowing Strip */}
-                {isActive && (
-                  <motion.div
-                    layoutId="nav-tubelight"
-                    className="absolute -bottom-1 left-3 right-3 h-[2px] bg-accent shadow-[0_0_8px_#e1ddd5] z-10"
-                    transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                  />
-                )}
+            {/* Desktop Links */}
+            <div className="hidden md:flex items-center h-full gap-2 relative">
+              {NAV_ITEMS.map((item, index) => {
+                const isPathMatch = currentPath === item.path || (item.path === '/' && currentPath === '');
+                const isActive = activeSection === item.id || isPathMatch;
                 
-                <span className="relative z-10">{item.name}</span>
-              </a>
-            )
-          })}
+                const linkContent = (
+                  <>
+                    <span className="relative z-10">{item.label}</span>
+                    
+                    {/* Active Soft White Glow Indicator */}
+                    {isActive && !reducedMotion && (
+                      <motion.div
+                        layoutId="nav-active-glow"
+                        className="absolute inset-0 bg-white/[0.04] rounded-full shadow-[0_0_12px_rgba(255,255,255,0.05)]"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    {isActive && reducedMotion && (
+                      <div className="absolute inset-0 bg-white/[0.04] rounded-full shadow-[0_0_12px_rgba(255,255,255,0.05)]" />
+                    )}
+
+                    {/* Hover Smooth Underline Indicator */}
+                    {hoveredIndex === index && !isActive && !reducedMotion && (
+                      <motion.div
+                        layoutId="nav-hover-line"
+                        className="absolute bottom-1 left-4 right-4 h-[1px] bg-white/30"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                  </>
+                );
+
+                const linkClasses = `relative px-4 py-2 text-[15px] font-medium transition-all duration-300 rounded-full flex items-center justify-center ${
+                  isActive ? 'text-[#F3F4F6]' : 'text-[#7B838C] hover:text-[#F3F4F6]'
+                }`;
+
+                if (item.external) {
+                  return (
+                    <a
+                      key={item.label}
+                      href={item.path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={linkClasses}
+                      onMouseEnter={() => setHoveredIndex(index)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    >
+                      {linkContent}
+                    </a>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={item.label}
+                    to={item.path}
+                    className={linkClasses}
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                  >
+                    {linkContent}
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* CTA & Mobile Toggle */}
+            <div className="flex items-center gap-4">
+              <Link to="/chat" className="hidden md:block">
+                <button className="bg-white text-[#080B10] hover:bg-[#F3F4F6] transition-colors font-medium text-[15px] px-5 py-2 rounded-full border-none outline-none">
+                  Launch Workspace
+                </button>
+              </Link>
+              
+              <button 
+                className="md:hidden text-[#7B838C] hover:text-[#F3F4F6] transition-colors pointer-events-auto p-2"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Toggle mobile menu"
+              >
+                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
+          </nav>
         </div>
 
-        {/* CTAs */}
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" className="hidden sm:inline-flex text-xs font-medium">
-            Sign In
-          </Button>
-          <Button variant="neon" className="rounded-full gap-2 text-xs font-medium">
-            Launch Workspace <Sparkles size={12} />
-          </Button>
-        </div>
-      </nav>
-    </motion.header>
-  )
+        {/* Mobile Menu Dropdown */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="absolute top-[80px] left-4 right-4 p-4 bg-[#11161C]/95 backdrop-blur-xl border border-[#232A32] rounded-2xl shadow-xl md:hidden flex flex-col gap-4 pointer-events-auto"
+            >
+              {NAV_ITEMS.map((item) => {
+                const isPathMatch = currentPath === item.path || (item.path === '/' && currentPath === '');
+                const isActive = activeSection === item.id || isPathMatch;
+                
+                if (item.external) {
+                   return (
+                    <a
+                      key={item.label}
+                      href={item.path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`text-lg font-medium p-2 rounded-lg transition-colors ${
+                        isActive ? 'text-white bg-[#242D34]' : 'text-[#7B838C] hover:text-white hover:bg-[#1B232A]'
+                      }`}
+                    >
+                      {item.label}
+                    </a>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={item.label}
+                    to={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`text-lg font-medium p-2 rounded-lg transition-colors ${
+                      isActive ? 'text-white bg-[#242D34]' : 'text-[#7B838C] hover:text-white hover:bg-[#1B232A]'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+              <div className="h-px bg-[#232A32] my-2 w-full" />
+              <Link to="/chat" onClick={() => setMobileMenuOpen(false)} className="w-full">
+                <button className="bg-white text-[#080B10] font-medium text-[16px] w-full py-3 rounded-xl border-none outline-none">
+                  Launch Workspace
+                </button>
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.header>
+    </AnimatePresence>
+  );
 }

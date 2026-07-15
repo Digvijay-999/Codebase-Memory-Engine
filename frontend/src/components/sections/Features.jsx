@@ -1,106 +1,92 @@
-import { motion } from "framer-motion"
-import { MessageSquareCode, Network, FileText, Zap, Shield, Sparkles } from "lucide-react"
-import { Card } from "../ui/Card"
+import React from 'react';
+import { Container, Section } from '../ui/Layout';
+import { motion } from 'framer-motion';
+import { Card } from '../ui/Card';
+import { ScrollReveal, ScrollRevealChild } from '../ui/ScrollReveal';
+import { DependencyGraphMotif } from '../graph/DependencyGraphMotif';
+import { Search, GitBranch, MessageSquare, FileText, BrainCircuit, History } from 'lucide-react';
 
-const features = [
+const FEATURES = [
   {
-    title: "AI Architecture Chat",
-    description: "Ask natural language questions about your architecture. ContextForge answers with deep, source-aware insights.",
-    icon: <MessageSquareCode className="w-8 h-8 text-accent" />,
-    className: "md:col-span-2 md:row-span-2 min-h-[360px]",
+    title: 'Semantic Search',
+    description: 'Find logic based on intent, not just exact keyword matches across your entire codebase.',
+    icon: Search
   },
   {
-    title: "Semantic Search",
-    description: "Find exactly what you need based on meaning, not just keywords.",
-    icon: <Network className="w-6 h-6 text-accent/80" />,
-    className: "md:col-span-1 min-h-[170px]",
+    title: 'Dependency Graph',
+    description: 'Automatically map architectural relationships and data flow between microservices.',
+    icon: GitBranch
   },
   {
-    title: "README Generation",
-    description: "Generate professional, comprehensive documentation automatically.",
-    icon: <FileText className="w-6 h-6 text-accent/80" />,
-    className: "md:col-span-1 min-h-[170px]",
+    title: 'AI Chat with Codebase',
+    description: 'Ask complex technical questions and get answers grounded in specific files and lines of code.',
+    icon: MessageSquare
   },
   {
-    title: "Lightning Fast",
-    description: "Built on ChromaDB for millisecond retrieval times.",
-    icon: <Zap className="w-6 h-6 text-accent/80" />,
-    className: "md:col-span-1 min-h-[170px]",
+    title: 'Documentation Generation',
+    description: 'Generate accurate, up-to-date architecture reports and READMEs directly from the source truth.',
+    icon: FileText
   },
   {
-    title: "Private & Secure",
-    description: "Your code stays private. Connect securely to GitHub.",
-    icon: <Shield className="w-6 h-6 text-accent/80" />,
-    className: "md:col-span-1 min-h-[170px]",
+    title: 'Architecture Reports',
+    description: 'Identify risks, anti-patterns, and unhandled edge cases across large codebases automatically.',
+    icon: BrainCircuit
+  },
+  {
+    title: 'Repository Memory',
+    description: 'Persist architectural decisions and context over time, reducing onboarding friction for new hires.',
+    icon: History
   }
-]
+];
 
 export function Features() {
   return (
-    <section id="features" className="py-32 bg-[#080b10] relative">
-      <div className="max-w-6xl mx-auto px-6">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-20 gap-6">
-          <div className="max-w-2xl">
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/5 border border-accent/10 text-accent text-xs font-semibold uppercase tracking-wider mb-6"
-            >
-              <Sparkles size={12} />
-              <span>Capabilities</span>
-            </motion.div>
-            <motion.h2 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-              className="text-3xl md:text-5xl font-bold tracking-tight text-foreground leading-[1.15]"
-            >
-              Everything you need to master your codebase.
-            </motion.h2>
-          </div>
-        </div>
+    <Section id="features" className="relative overflow-hidden">
+      {/* Background Motif */}
+      <DependencyGraphMotif className="top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-5xl" />
 
-        {/* Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-          {features.map((feature, index) => (
-            <Card
-              key={index}
-              className={`p-8 md:p-10 flex flex-col justify-between group cursor-pointer border border-white/5 bg-[#1b232a] ${feature.className}`}
-            >
-              {/* Subtle metallic linear glow hover */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-              
-              <div className="flex flex-col h-full justify-between gap-6 relative z-10">
-                <motion.div 
-                  className="w-12 h-12 rounded-lg bg-[#3e484e]/20 border border-white/5 flex items-center justify-center relative overflow-hidden"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <motion.div 
-                    className="relative z-10"
-                    whileHover={{ rotate: 8, scale: 1.1 }}
-                  >
-                    {feature.icon}
-                  </motion.div>
-                </motion.div>
+      <Container className="relative z-10">
+        <ScrollReveal className="text-center max-w-2xl mx-auto mb-16">
+          <h2 className="text-section text-text-primary mb-6">
+            Everything you need to understand scale.
+          </h2>
+          <p className="text-body-large text-text-secondary mx-auto">
+            ContextForge processes your repositories into an intelligent vector graph, giving you unprecedented visibility into your architecture.
+          </p>
+        </ScrollReveal>
 
-                <div>
-                  <h3 className="text-xl font-semibold mb-3 text-foreground group-hover:text-accent transition-colors duration-300">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm text-[#797f80] leading-relaxed font-light">
-                    {feature.description}
-                  </p>
-                </div>
-              </div>
-            </Card>
+        <ScrollReveal stagger={true} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {FEATURES.map((feature, idx) => (
+            <ScrollRevealChild key={idx}>
+              <motion.div
+                whileHover={{ y: -4, borderColor: 'var(--text-secondary)' }}
+                transition={{ duration: 0.2 }}
+                className="h-full"
+              >
+                <Card className="h-full flex flex-col p-0 overflow-hidden bg-surface group relative border-border">
+                  {/* Abstract dark-gradient panel for visual */}
+                  <div className="h-32 w-full bg-[radial-gradient(ellipse_at_top,_var(--surface-nested)_0%,_transparent_70%)] opacity-50 transition-opacity group-hover:opacity-100 relative overflow-hidden">
+                    {/* Subtle line art/glow */}
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000_70%,transparent_100%)] opacity-20" />
+                  </div>
+                  
+                  <div className="p-6 flex flex-col flex-1 relative z-10 -mt-10">
+                    <div className="w-12 h-12 rounded-xl bg-surface-elevated border border-border flex items-center justify-center mb-6 text-accent shadow-sm">
+                      <feature.icon size={24} />
+                    </div>
+                    <h3 className="text-card-heading text-text-primary mb-3">
+                      {feature.title}
+                    </h3>
+                    <p className="text-text-secondary leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                </Card>
+              </motion.div>
+            </ScrollRevealChild>
           ))}
-        </div>
-      </div>
-    </section>
-  )
+        </ScrollReveal>
+      </Container>
+    </Section>
+  );
 }

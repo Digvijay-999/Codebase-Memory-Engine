@@ -1,59 +1,86 @@
-import { Terminal, GitBranch, MessageCircle } from "lucide-react"
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { Code2, Hash, Briefcase, Terminal } from 'lucide-react';
+import { Container } from '../ui/Layout';
+
+const FOOTER_LINKS = {
+  Product: [
+    { label: 'Features', path: '/#features' },
+    { label: 'Integrations', path: '/#integrations' },
+    { label: 'Pricing', path: '/pricing' },
+    { label: 'Changelog', path: '/changelog' },
+  ],
+  Resources: [
+    { label: 'Documentation', path: '/docs' },
+    { label: 'API Reference', path: '/api' },
+    { label: 'Blog', path: '/blog' },
+    { label: 'Community', path: '/community' },
+  ],
+  Company: [
+    { label: 'About', path: '/about' },
+    { label: 'Careers', path: '/careers' },
+    { label: 'Privacy', path: '/privacy' },
+    { label: 'Terms', path: '/terms' },
+  ],
+};
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/5 bg-[#080b10] pt-20 pb-10 relative">
-      <div className="max-w-6xl mx-auto px-6 select-none">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-14 mb-16">
-          <div className="col-span-1 md:col-span-2 space-y-6">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-accent/5 border border-accent/15 flex items-center justify-center text-accent">
-                <Terminal size={14} />
-              </div>
-              <span className="font-semibold text-base tracking-tight text-foreground">ContextForge</span>
-            </div>
-            <p className="text-sm text-[#797f80] max-w-sm font-light leading-relaxed">
-              Forge understanding from any codebase. The AI-powered code intelligence platform built for developers.
-            </p>
-            <div className="flex gap-4">
-              <a href="#" className="w-8 h-8 rounded-full bg-[#1b232a] hover:bg-[#3e484e]/40 border border-white/5 flex items-center justify-center text-[#797f80] hover:text-[#d9dbd7] transition-all duration-300">
-                <GitBranch size={15} />
-              </a>
-              <a href="#" className="w-8 h-8 rounded-full bg-[#1b232a] hover:bg-[#3e484e]/40 border border-white/5 flex items-center justify-center text-[#797f80] hover:text-[#d9dbd7] transition-all duration-300">
-                <MessageCircle size={15} />
-              </a>
-            </div>
-          </div>
+    <footer className="border-t border-border bg-bg pt-80 pb-40">
+      <Container>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-40 lg:gap-32 mb-56">
           
-          <div>
-            <h4 className="font-semibold text-xs tracking-widest uppercase text-[#d9dbd7] mb-5">Product</h4>
-            <ul className="space-y-3 text-xs text-[#797f80] font-light">
-              <li><a href="#features" className="hover:text-[#d9dbd7] transition-colors">Features</a></li>
-              <li><a href="#how-it-works" className="hover:text-[#d9dbd7] transition-colors">How it Works</a></li>
-              <li><a href="#" className="hover:text-[#d9dbd7] transition-colors">Pricing</a></li>
-              <li><a href="#" className="hover:text-[#d9dbd7] transition-colors">Changelog</a></li>
-            </ul>
+          {/* Logo & Info */}
+          <div className="lg:col-span-2">
+            <Link to="/" className="flex items-center gap-2 mb-4">
+              <div className="w-6 h-6 rounded-md bg-accent flex items-center justify-center">
+                <div className="w-3 h-3 bg-bg rounded-sm" />
+              </div>
+              <span className="font-heading font-semibold text-text-primary tracking-tight">ContextForge</span>
+            </Link>
+            <p className="text-text-secondary max-w-sm mb-6">
+              The semantic intelligence platform for modern software repositories. Understand architecture, navigate complexity, and ship faster.
+            </p>
+            <div className="flex items-center gap-4 text-text-secondary">
+              <a href="#" aria-label="Twitter" className="hover:text-text-primary transition-colors">
+                <Hash size={20} />
+              </a>
+              <a href="#" aria-label="GitHub" className="hover:text-text-primary transition-colors">
+                <Code2 size={20} />
+              </a>
+              <a href="#" aria-label="LinkedIn" className="hover:text-text-primary transition-colors">
+                <Briefcase size={20} />
+              </a>
+            </div>
           </div>
 
-          <div>
-            <h4 className="font-semibold text-xs tracking-widest uppercase text-[#d9dbd7] mb-5">Resources</h4>
-            <ul className="space-y-3 text-xs text-[#797f80] font-light">
-              <li><a href="#" className="hover:text-[#d9dbd7] transition-colors">Documentation</a></li>
-              <li><a href="#" className="hover:text-[#d9dbd7] transition-colors">API Reference</a></li>
-              <li><a href="#" className="hover:text-[#d9dbd7] transition-colors">Blog</a></li>
-              <li><a href="#" className="hover:text-[#d9dbd7] transition-colors">Community</a></li>
-            </ul>
-          </div>
+          {/* Links */}
+          {Object.entries(FOOTER_LINKS).map(([category, links]) => (
+            <div key={category}>
+              <h4 className="font-semibold text-text-primary mb-4">{category}</h4>
+              <ul className="space-y-3">
+                {links.map((link) => (
+                  <li key={link.label}>
+                    <Link to={link.path} className="text-text-secondary hover:text-text-primary transition-colors text-sm">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
-        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-[#797f80] font-light">
-          <p>© {new Date().getFullYear()} ContextForge. All rights reserved.</p>
-          <div className="flex gap-6">
-            <a href="#" className="hover:text-[#d9dbd7] transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-[#d9dbd7] transition-colors">Terms of Service</a>
+        <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-meta">
+            &copy; {new Date().getFullYear()} ContextForge Inc. All rights reserved.
+          </p>
+          <div className="flex items-center gap-2 text-meta">
+            <Terminal size={14} />
+            <span>System operational</span>
           </div>
         </div>
-      </div>
+      </Container>
     </footer>
-  )
+  );
 }
