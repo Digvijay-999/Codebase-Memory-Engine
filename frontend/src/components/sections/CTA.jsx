@@ -22,7 +22,7 @@ export function CTA() {
           <p className="text-body-large text-text-secondary mx-auto mb-10">
             Connect your repository and get full architectural visibility in minutes.
           </p>
-          <Link to="/chat">
+          <Link to="/dashboard">
             <NeonButton className="px-12">
               Launch Workspace
             </NeonButton>

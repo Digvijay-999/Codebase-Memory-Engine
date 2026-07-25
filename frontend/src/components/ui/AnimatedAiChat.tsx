@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, useTransition, useState } from "react";
 import { cn } from "../../lib/utils";
+import { api } from "../../services/api";
 import {
     FileUp,
     PenTool,
@@ -25,6 +26,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import * as React from "react"
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface UseAutoResizeTextareaProps {
     minHeight: number;
@@ -135,6 +138,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 Textarea.displayName = "Textarea"
 
 export function AnimatedAIChat() {
+    const [activeRepo, setActiveRepo] = useState(() => localStorage.getItem('repo_name') || 'unknown');
+    const [activeChunks, setActiveChunks] = useState(() => localStorage.getItem('stored_chunks') || '0');
     const [value, setValue] = useState("");
     const [attachments, setAttachments] = useState<string[]>([]);
     const [isTyping, setIsTyping] = useState(false);
@@ -142,8 +147,26 @@ export function AnimatedAIChat() {
     const [activeSuggestion, setActiveSuggestion] = useState<number>(-1);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [recentCommand, setRecentCommand] = useState<string | null>(null);
-    const [answer, setAnswer] = useState("");
-    const [sources, setSources] = useState<string[]>([]);
+    
+    const [messages, setMessages] = useState<any[]>(() => {
+        const saved = localStorage.getItem('chatHistory');
+        if (saved) {
+            try { return JSON.parse(saved); } catch (e) {}
+        }
+        return [];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('chatHistory', JSON.stringify(messages));
+    }, [messages]);
+
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages]);
 
     const { textareaRef, adjustHeight } = useAutoResizeTextarea({
         minHeight: 60,
@@ -253,31 +276,63 @@ export function AnimatedAIChat() {
     const handleSendMessage = async () => {
         if (!value.trim()) return;
 
+        const currentQuery = value;
+        const userMsg = {
+            id: Date.now().toString(),
+            role: "user",
+            content: currentQuery,
+            timestamp: Date.now()
+        };
+
+        setMessages(prev => [...prev, userMsg]);
+        setValue("");
+        adjustHeight(true);
         setIsTyping(true);
+
         try {
-            const response = await fetch("http://127.0.0.1:8000/ask", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ question: value }),
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to get response");
+            let data;
+            if (currentQuery.startsWith('/docs ')) {
+                const repoName = currentQuery.replace('/docs ', '').trim() || activeRepo;
+                data = await api.generateReadme(repoName);
+                const assistantMsg = {
+                    id: (Date.now() + 1).toString(),
+                    role: "assistant",
+                    content: data.readme || "No readme generated.",
+                    sources: []
+                };
+                setMessages(prev => [...prev, assistantMsg]);
+            } else if (currentQuery.startsWith('/explain ')) {
+                const repoName = currentQuery.replace('/explain ', '').trim() || activeRepo;
+                data = await api.explainRepo(repoName);
+                const assistantMsg = {
+                    id: (Date.now() + 1).toString(),
+                    role: "assistant",
+                    content: data.explanation || "No explanation generated.",
+                    sources: []
+                };
+                setMessages(prev => [...prev, assistantMsg]);
+            } else {
+                data = await api.askQuestion(currentQuery, activeRepo);
+                const assistantMsg = {
+                    id: (Date.now() + 1).toString(),
+                    role: "assistant",
+                    content: data.answer || "",
+                    sources: data.sources || []
+                };
+                setMessages(prev => [...prev, assistantMsg]);
             }
-
-            const data = await response.json();
-
-            setAnswer(data.answer || "");
-            setSources(data.sources || []);
-
-            setValue("");
-            adjustHeight(true);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
+            const errorMsg = {
+                id: (Date.now() + 1).toString(),
+                role: "assistant",
+                content: `⚠ **Unable to generate a response.**\n\n${error.message || 'Something went wrong while contacting the backend.'}`,
+                sources: []
+            };
+            setMessages(prev => [...prev, errorMsg]);
         } finally {
             setIsTyping(false);
+            textareaRef.current?.focus();
         }
     };
 
@@ -300,15 +355,15 @@ export function AnimatedAIChat() {
     };
 
     return (
-        <div className="min-h-screen flex flex-col w-full items-center justify-center bg-[#080B10] text-[#F3F4F6] p-6 relative overflow-hidden">
-            <div className="w-full max-w-3xl mx-auto relative">
+        <div className="h-full flex flex-col w-full items-center justify-start py-12 bg-[#080B10] text-[#F3F4F6] px-6 relative overflow-y-auto overflow-x-hidden">
+            <div className="w-full max-w-3xl mx-auto relative flex flex-col min-h-full">
                 <motion.div
-                    className="relative z-10 space-y-12"
+                    className="relative z-10 space-y-12 flex-1 pb-24"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
                 >
-                    <div className="text-center space-y-3">
+                    <div className="text-center space-y-3 pt-6">
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -342,8 +397,8 @@ export function AnimatedAIChat() {
                                     <GitBranch className="w-4 h-4 text-[#F3F4F6]" />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="font-semibold text-[#F3F4F6] text-sm">contextforge</span>
-                                    <span className="text-xs text-[#8B939E] font-medium mt-0.5">18,421 Files • 3.2M Tokens • Last Indexed 2 minutes ago</span>
+                                    <span className="font-semibold text-[#F3F4F6] text-sm">{activeRepo}</span>
+                                    <span className="text-xs text-[#8B939E] font-medium mt-0.5">{Number(activeChunks).toLocaleString()} Chunks • Indexed</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 mt-3 sm:mt-0 px-3 py-1.5 rounded-md bg-[#4ADE80]/10 border border-[#4ADE80]/20">
@@ -352,30 +407,62 @@ export function AnimatedAIChat() {
                             </div>
                         </motion.div>
 
-                        <AnimatePresence>
-                            {answer && (
+                        <AnimatePresence initial={false}>
+                            {messages.map((msg) => (
                                 <motion.div
+                                    key={msg.id}
                                     initial={{ opacity: 0, y: 12 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0 }}
-                                    className="mb-6 rounded-2xl border border-[#232A32] bg-[#11161C] p-6"
+                                    className="mb-6 rounded-2xl border border-[#232A32] bg-[#11161C] p-6 h-auto flex flex-col"
                                 >
-                                    <h3 className="text-sm font-semibold text-white mb-4">
-                                        ContextForge
+                                    <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                                        {msg.role === 'user' ? 'You' : <><Sparkles className="w-4 h-4" /> ContextForge</>}
                                     </h3>
 
-                                    <p className="text-[#C8CDD4] leading-8 whitespace-pre-wrap">
-                                        {answer}
-                                    </p>
+                                    <div 
+                                        className="text-[#C8CDD4] break-words w-full overflow-hidden"
+                                        style={{ lineHeight: '1.75' }}
+                                    >
+                                        <ReactMarkdown 
+                                            remarkPlugins={[remarkGfm]}
+                                            components={{
+                                                table: ({node, ...props}) => <div className="overflow-x-auto my-4 w-full"><table className="min-w-full divide-y divide-[#232A32] border border-[#232A32] rounded-lg" {...props} /></div>,
+                                                thead: ({node, ...props}) => <thead className="bg-[#1A2129]" {...props} />,
+                                                tbody: ({node, ...props}) => <tbody className="divide-y divide-[#232A32]" {...props} />,
+                                                tr: ({node, ...props}) => <tr className="hover:bg-[#1A2129]/50 transition-colors" {...props} />,
+                                                th: ({node, ...props}) => <th className="px-4 py-3 text-left text-xs font-semibold text-[#8B939E] uppercase tracking-wider" {...props} />,
+                                                td: ({node, ...props}) => <td className="px-4 py-3 text-sm text-[#C8CDD4]" {...props} />,
+                                                pre: ({node, ...props}) => <pre className="bg-[#1A2129] p-4 rounded-xl border border-[#232A32] overflow-x-auto my-4 text-sm w-full" {...props} />,
+                                                code: ({node, className, children, ...props}: any) => {
+                                                    const match = /language-(\w+)/.exec(className || '')
+                                                    const isInline = !match && !className?.includes('language-')
+                                                    return isInline 
+                                                    ? <code className="bg-[#1A2129] text-[#4ADE80] px-1.5 py-0.5 rounded text-sm font-mono border border-[#232A32]" {...props}>{children}</code>
+                                                    : <code className={cn("font-mono text-sm text-[#F3F4F6]", className)} {...props}>{children}</code>
+                                                },
+                                                h1: ({node, ...props}) => <h1 className="text-2xl font-semibold text-white mt-8 mb-4 pb-2 border-b border-[#232A32]" {...props} />,
+                                                h2: ({node, ...props}) => <h2 className="text-xl font-semibold text-white mt-6 mb-3" {...props} />,
+                                                h3: ({node, ...props}) => <h3 className="text-lg font-medium text-white mt-4 mb-2" {...props} />,
+                                                h4: ({node, ...props}) => <h4 className="text-base font-medium text-white mt-4 mb-2" {...props} />,
+                                                ul: ({node, ...props}) => <ul className="list-disc pl-5 my-4 space-y-2" {...props} />,
+                                                ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-4 space-y-2" {...props} />,
+                                                li: ({node, ...props}) => <li className="text-[#C8CDD4]" {...props} />,
+                                                p: ({node, ...props}) => <p className="my-4 leading-relaxed" {...props} />,
+                                                a: ({node, ...props}) => <a className="text-[#4ADE80] hover:underline" target="_blank" rel="noopener noreferrer" {...props} />
+                                            }}
+                                        >
+                                            {msg.content.replace(/\r/g, '')}
+                                        </ReactMarkdown>
+                                    </div>
 
-                                    {sources.length > 0 && (
+                                    {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
                                         <div className="mt-6 border-t border-[#232A32] pt-4">
                                             <p className="text-xs uppercase tracking-wider text-[#8B939E] mb-3">
                                                 Sources
                                             </p>
 
                                             <div className="flex flex-wrap gap-2">
-                                                {sources.map((source, index) => (
+                                                {msg.sources.map((source: string, index: number) => (
                                                     <span
                                                         key={index}
                                                         className="rounded-md border border-[#232A32] bg-[#1A2129] px-3 py-1 text-xs text-[#8B939E]"
@@ -387,7 +474,8 @@ export function AnimatedAIChat() {
                                         </div>
                                     )}
                                 </motion.div>
-                            )}
+                            ))}
+                            {isTyping && <SkeletonMessage key="skeleton" />}
                         </AnimatePresence>
 
                         <motion.div
@@ -586,51 +674,76 @@ export function AnimatedAIChat() {
                         ))}
                     </div>
                 </motion.div>
+                <div ref={messagesEndRef} />
             </div>
-
-            <AnimatePresence>
-                {isTyping && (
-                    <motion.div
-                        className="fixed bottom-8 mx-auto transform -translate-x-1/2 bg-[#11161C] rounded-full px-5 py-2.5 shadow-lg border border-[#232A32]"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="w-6 h-6 rounded-md bg-[#1A2129] flex items-center justify-center border border-[#232A32]">
-                                <Sparkles className="w-3.5 h-3.5 text-[#F3F4F6]" />
-                            </div>
-                            <div className="flex items-center gap-2 text-sm font-medium text-[#8B939E]">
-                                <span>ContextForge is thinking</span>
-                                <TypingDots />
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </div>
     );
 }
 
-function TypingDots() {
+const loadingMessages = [
+    "Searching semantic embeddings...",
+    "Reading repository context...",
+    "Linking relevant code...",
+    "Understanding project architecture...",
+    "Generating response...",
+    "Finalizing answer..."
+];
+
+function DynamicLoadingText() {
+    const [msgIndex, setMsgIndex] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setMsgIndex(prev => {
+                if (prev < loadingMessages.length - 1) return prev + 1;
+                return prev;
+            });
+        }, 2000);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
-        <div className="flex items-center ml-1 gap-1">
-            {[1, 2, 3].map((dot) => (
-                <motion.div
-                    key={dot}
-                    className="w-1.5 h-1.5 bg-[#8B939E] rounded-full"
-                    initial={{ opacity: 0.3 }}
-                    animate={{
-                        opacity: [0.3, 1, 0.3],
-                    }}
-                    transition={{
-                        duration: 1.2,
-                        repeat: Infinity,
-                        delay: dot * 0.2,
-                        ease: "easeInOut",
-                    }}
-                />
-            ))}
-        </div>
+        <AnimatePresence mode="wait">
+            <motion.div
+                key={msgIndex}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.3 }}
+                className="flex items-center gap-2 text-[#8B939E] font-medium text-sm mb-5"
+            >
+                <LoaderIcon className="w-4 h-4 animate-[spin_2s_linear_infinite]" />
+                <span>{loadingMessages[msgIndex]}</span>
+            </motion.div>
+        </AnimatePresence>
+    );
+}
+
+function SkeletonMessage() {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="mb-6 rounded-2xl border border-[#232A32] bg-[#11161C] p-6 h-auto flex flex-col"
+        >
+            <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" /> ContextForge
+            </h3>
+            
+            <DynamicLoadingText />
+
+            <div className="space-y-6">
+                <div className="space-y-3">
+                    <motion.div className="h-4 bg-[#232A32]/60 rounded w-full" animate={{ opacity: [0.4, 0.8, 0.4] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }} />
+                    <motion.div className="h-4 bg-[#232A32]/60 rounded w-[95%]" animate={{ opacity: [0.4, 0.8, 0.4] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.1 }} />
+                    <motion.div className="h-4 bg-[#232A32]/60 rounded w-[85%]" animate={{ opacity: [0.4, 0.8, 0.4] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} />
+                </div>
+                <div className="space-y-3">
+                    <motion.div className="h-4 bg-[#232A32]/60 rounded w-full" animate={{ opacity: [0.4, 0.8, 0.4] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }} />
+                    <motion.div className="h-4 bg-[#232A32]/60 rounded w-[70%]" animate={{ opacity: [0.4, 0.8, 0.4] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} />
+                </div>
+            </div>
+        </motion.div>
     );
 }

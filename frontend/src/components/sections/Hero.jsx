@@ -68,7 +68,7 @@ export function Hero() {
             variants={itemVariants}
             className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-12"
           >
-            <Link to="/chat" className="transition-opacity hover:opacity-90">
+            <Link to="/dashboard" className="transition-opacity hover:opacity-90">
               <button className="bg-white text-[#080B10] font-medium text-[15px] px-6 py-3 rounded-full flex items-center justify-center w-fit shadow-sm">
                 Launch Workspace
               </button>

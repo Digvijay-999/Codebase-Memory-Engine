@@ -1,0 +1,9 @@
+[tool.pyright]
+venvPath = "backend"
+venv = "venv"
+extraPaths = ["backend"]
+
+[tool.pyrefly]
+venvPath = "backend"
+venv = "venv"
+extraPaths = ["backend"]

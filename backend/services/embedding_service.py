@@ -1,6 +1,7 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 from fastapi import HTTPException
+import uuid
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
@@ -16,15 +17,20 @@ def create_embedding(text: str):
     return embedding.tolist()
 
 
-def store_chunks(chunks):
+def store_chunks(chunks, repo_name: str):
     if not chunks:
         return 0
 
-    ids = [str(i) for i in range(len(chunks))]
+    ids = [str(uuid.uuid4()) for _ in range(len(chunks))]
     documents = [chunk["content"] for chunk in chunks]
 
     # Generate all embeddings in one batch
     embeddings = model.encode(documents).tolist()
+
+    try:
+        collection.delete(where={"repo_name": repo_name})
+    except Exception:
+        pass
 
     try:
         collection.add(
@@ -32,8 +38,12 @@ def store_chunks(chunks):
             documents=documents,
             embeddings=embeddings,
             metadatas=[
-                {"file": chunk["file"]}
-                for chunk in chunks
+                {
+                    "file": chunk["file"],
+                    "repo_name": repo_name,
+                    "chunk_id": ids[i]
+                }
+                for i, chunk in enumerate(chunks)
             ]
         )
     except Exception as e:
@@ -45,14 +55,14 @@ def store_chunks(chunks):
     return len(ids)
 
 
-def search_chunks(query, n_results=5):
-
+def search_chunks(query, repo_name: str, n_results=5):
     query_embedding = create_embedding(query)
 
     try:
         results = collection.query(
             query_embeddings=[query_embedding],
-            n_results=n_results
+            n_results=n_results,
+            where={"repo_name": repo_name}
         )
     except Exception as e:
         raise HTTPException(

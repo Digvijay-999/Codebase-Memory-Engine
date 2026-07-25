@@ -14,8 +14,6 @@ const SIDEBAR_LINKS = [
   { icon: Home, label: 'Overview', path: '/dashboard' },
   { icon: MessageSquare, label: 'AI Chat', path: '/chat' },
   { icon: FileText, label: 'Documentation', path: '/docs' },
-  { icon: Network, label: 'Architecture', path: '/architecture' },
-  { icon: GitBranch, label: 'Repository', path: '/repository' },
 ];
 
 export function AppSidebar({ className }) {
