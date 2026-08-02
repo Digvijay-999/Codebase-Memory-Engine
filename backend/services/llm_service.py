@@ -10,7 +10,7 @@ client = openai.OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
 )
 
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash:free")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
 
 import time
 import logging
