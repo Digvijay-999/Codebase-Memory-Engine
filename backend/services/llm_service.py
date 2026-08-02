@@ -75,6 +75,22 @@ Question:
     return call_openrouter_with_backoff(prompt, timeout=60.0)
 
 
+def analyze_repository(prompt: str, context: str):
+    full_prompt = f"""
+You are an expert software engineer performing a comprehensive repository analysis.
+
+Repository Context:
+{context}
+
+Task:
+{prompt}
+
+Answer ONLY using the provided repository context. Do not invent findings.
+If evidence is insufficient even after reading the repository, clearly explain why.
+"""
+    return call_openrouter_with_backoff(full_prompt, timeout=120.0)
+
+
 def explain_repository(context: str, metadata_json: str = None):
     
     prompt = f"""

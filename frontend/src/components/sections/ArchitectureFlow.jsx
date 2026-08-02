@@ -13,7 +13,7 @@ const FLOW_STEPS = [
 
 export function ArchitectureFlow() {
   return (
-    <Section id="architecture" className="bg-surface border-y border-border">
+    <Section id="how-it-works" className="bg-surface border-y border-border">
       <Container>
         <ScrollReveal className="text-center max-w-2xl mx-auto mb-16">
           <span className="text-eyebrow text-text-muted block mb-4">Pipeline</span>

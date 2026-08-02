@@ -26,7 +26,7 @@ export function Hero() {
   };
 
   return (
-    <section className="relative w-full h-[100vh] flex items-center justify-center overflow-hidden bg-[#080B10]">
+    <section id="product" className="relative w-full h-[100vh] flex items-center justify-center overflow-hidden bg-[#080B10]">
       {/* 1280px Max Container */}
       <div className="w-full max-w-[1280px] px-6 md:px-12 mx-auto flex flex-col lg:flex-row items-center justify-between h-full pt-16">
         
@@ -73,7 +73,7 @@ export function Hero() {
                 Launch Workspace
               </button>
             </Link>
-            <Link to="#architecture" className="transition-opacity hover:opacity-80 group">
+            <Link to="#how-it-works" className="transition-opacity hover:opacity-80 group">
               <button className="bg-transparent text-[#F3F4F6] border border-[#232A32] font-medium text-[15px] px-6 py-3 rounded-full flex items-center justify-center w-fit transition-colors group-hover:bg-[#11161C] group-hover:border-[#323A42]">
                 View Pipeline
               </button>

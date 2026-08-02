@@ -11,14 +11,35 @@ export default function Docs() {
   const [loading, setLoading] = useState(true);
   const [repoName, setRepoName] = useState('Core Engine');
 
+  const handleExport = () => {
+    const isInvalidReport = !report || report.startsWith('**Error') || report.includes('No repositories') || report === 'No documentation generated.';
+    if (isInvalidReport) return;
+
+    const blob = new Blob([report], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    const safeRepoName = repoName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    link.download = `${safeRepoName}-architecture-report.md`;
+    
+    document.body.appendChild(link);
+    link.click();
+    
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     const fetchDocs = async () => {
       try {
-        const reposData = await api.getRepos();
-        if (reposData.repositories && reposData.repositories.length > 0) {
-          const firstRepo = reposData.repositories[0];
-          setRepoName(firstRepo);
-          const data = await api.explainRepo(firstRepo);
+        const currentRepo = localStorage.getItem('repo_name');
+        console.log('Selected repository:', currentRepo);
+        
+        if (currentRepo) {
+          setRepoName(currentRepo);
+          console.log('Sending repo_name to backend:', currentRepo);
+          const data = await api.explainRepo(currentRepo);
           setReport(data.explanation || 'No documentation generated.');
         } else {
           setRepoName('None');
@@ -44,8 +65,15 @@ export default function Docs() {
             <FileText size={18} className="text-text-secondary" />
             <span className="font-medium text-text-primary">Architecture Report: {repoName}</span>
           </div>
-          <Button variant="ghost" size="sm" className="gap-2">
-            <Download size={16} /> Export Markdown
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="gap-2"
+            onClick={handleExport}
+            disabled={loading || !report || report.startsWith('**Error') || report.includes('No repositories') || report === 'No documentation generated.'}
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            Export Markdown
           </Button>
         </header>
 

@@ -190,10 +190,46 @@ def ask(request: AskRequest):
     }
 
 
+@router.post("/analyze")
+def analyze_repo(request: AskRequest):
+    repo_name_clean = request.repo_name
+    repo_path = f"repos/{repo_name_clean}"
+
+    if not os.path.exists(repo_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Repository not found."
+        )
+
+    files = scan_repository(repo_path)
+    docs = read_repository(repo_path, files)
+    context = get_repository_context(docs)
+
+    from services.llm_service import analyze_repository
+    answer = analyze_repository(request.question, context)
+
+    return {
+        "success": True,
+        "answer": answer,
+        "sources": []
+    }
+
+
 @router.post("/explain")
 def explain(request: RepoNameRequest):
-
+    print("--- TEMPORARY LOGGING: DOCUMENTATION PIPELINE ---")
+    print(f"Selected repository: {request.repo_name}")
     repo_path = f"repos/{request.repo_name}"
+    print(f"Repository path: {os.path.abspath(repo_path)}")
+
+    # Mock chunk retrieval log just to verify Chroma filtering for the prompt
+    try:
+        from services.embedding_service import search_chunks
+        test_search = search_chunks("architecture", request.repo_name, n_results=2)
+        print(f"Retrieved chunk metadata: {test_search.get('metadatas', [])}")
+        print(f"Number of chunks retrieved for test: {len(test_search.get('documents', []))}")
+    except Exception as e:
+        print(f"Chroma filtering test failed or no chunks: {e}")
 
     if not os.path.exists(repo_path):
         raise HTTPException(
@@ -263,6 +299,9 @@ def explain(request: RepoNameRequest):
 
     import json
     metadata_json = json.dumps(structured_metadata, indent=2)
+
+    print(f"Prompt repository: {structured_metadata['repository_name']}")
+    print("-------------------------------------------------")
 
     context = get_repository_context(docs)
     explanation = explain_repository(context, metadata_json)

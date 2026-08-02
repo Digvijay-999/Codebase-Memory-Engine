@@ -24,3 +24,6 @@ backend/repos/
 
 # ChromaDB
 backend/chroma_db/
+
+# Documentation
+docs/

@@ -5,8 +5,7 @@ import {
   MessageSquare, 
   FileText, 
   Network, 
-  GitBranch, 
-  Settings 
+  GitBranch 
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -58,12 +57,6 @@ export function AppSidebar({ className }) {
         </nav>
       </div>
 
-      <div className="mt-auto p-4 border-t border-[#232A32]">
-        <button className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium text-[#8B939E] hover:bg-[#1A2129] hover:text-white transition-all duration-150 ease-in-out">
-          <Settings size={18} />
-          Settings
-        </button>
-      </div>
     </aside>
   );
 }

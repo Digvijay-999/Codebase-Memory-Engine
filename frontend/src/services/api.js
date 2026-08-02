@@ -61,6 +61,15 @@ export const api = {
     });
   },
 
+  async analyzeRepo(question, repoName) {
+    return fetchWithTimeout(`${API_BASE_URL}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, repo_name: repoName }),
+      timeout: 120000
+    });
+  },
+
   async explainRepo(repoName) {
     return fetchWithTimeout(`${API_BASE_URL}/explain`, {
       method: 'POST',

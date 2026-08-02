@@ -6,9 +6,9 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { Button } from '../ui/Button';
 
 const NAV_ITEMS = [
-  { label: 'Product', path: '/', id: 'hero' },
+  { label: 'Product', path: '/#product', id: 'product' },
   { label: 'Features', path: '/#features', id: 'features' },
-  { label: 'How It Works', path: '/#architecture', id: 'architecture' },
+  { label: 'How It Works', path: '/#how-it-works', id: 'how-it-works' },
   { label: 'Demo', path: '/#demo', id: 'demo' },
   { label: 'GitHub', path: 'https://github.com', id: 'github', external: true },
 ];
@@ -19,7 +19,7 @@ export function Navbar() {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('hero');
+  const [activeSection, setActiveSection] = useState('product');
 
   // Handle Scroll for appearing
   useEffect(() => {
@@ -37,15 +37,16 @@ export function Navbar() {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        const visibleEntries = entries.filter(entry => entry.isIntersecting);
-        if (visibleEntries.length > 0) {
-          visibleEntries.sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-          setActiveSection(visibleEntries[0].target.id);
-        } else if (window.scrollY < 100) {
-           setActiveSection('hero');
-        }
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
       },
-      { rootMargin: '-20% 0px -40% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] }
+      { 
+        rootMargin: '-10% 0px -10% 0px', 
+        threshold: 0.5 
+      }
     );
 
     NAV_ITEMS.forEach(item => {
@@ -57,6 +58,20 @@ export function Navbar() {
 
     return () => observer.disconnect();
   }, [location.pathname]);
+
+  const handleNavClick = (e, item) => {
+    if (item.external) return;
+    
+    if (location.pathname === '/') {
+      e.preventDefault();
+      const el = document.getElementById(item.id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      } else if (item.id === 'product') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
 
   const currentPath = location.pathname + location.hash;
 
@@ -82,7 +97,7 @@ export function Navbar() {
             {/* Desktop Links */}
             <div className="hidden md:flex items-center h-full gap-2 relative">
               {NAV_ITEMS.map((item, index) => {
-                const isPathMatch = currentPath === item.path || (item.path === '/' && currentPath === '');
+                const isPathMatch = currentPath === item.path;
                 const isActive = activeSection === item.id || isPathMatch;
                 
                 const linkContent = (
@@ -139,6 +154,7 @@ export function Navbar() {
                     className={linkClasses}
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
+                    onClick={(e) => handleNavClick(e, item)}
                   >
                     {linkContent}
                   </Link>
@@ -176,7 +192,7 @@ export function Navbar() {
               className="absolute top-[80px] left-4 right-4 p-4 bg-[#11161C]/95 backdrop-blur-xl border border-[#232A32] rounded-2xl shadow-xl md:hidden flex flex-col gap-4 pointer-events-auto"
             >
               {NAV_ITEMS.map((item) => {
-                const isPathMatch = currentPath === item.path || (item.path === '/' && currentPath === '');
+                const isPathMatch = currentPath === item.path;
                 const isActive = activeSection === item.id || isPathMatch;
                 
                 if (item.external) {
@@ -200,7 +216,10 @@ export function Navbar() {
                   <Link
                     key={item.label}
                     to={item.path}
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={(e) => {
+                      setMobileMenuOpen(false);
+                      handleNavClick(e, item);
+                    }}
                     className={`text-lg font-medium p-2 rounded-lg transition-colors ${
                       isActive ? 'text-white bg-[#242D34]' : 'text-[#7B838C] hover:text-white hover:bg-[#1B232A]'
                     }`}

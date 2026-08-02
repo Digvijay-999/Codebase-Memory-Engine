@@ -4,8 +4,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { MeshGradient } from "@paper-design/shaders-react";
 import { ErrorBoundary } from "./ErrorBoundary";
 
-export function ShaderBackground({ children }) {
-  const containerRef = useRef(null);
+export function ShaderBackground({ children }: { children: React.ReactNode }) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {

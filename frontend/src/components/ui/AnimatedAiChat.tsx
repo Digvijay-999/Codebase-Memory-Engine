@@ -273,6 +273,63 @@ export function AnimatedAIChat() {
         }
     };
 
+    const quickActionPrompts: Record<string, string> = {
+        "Trace API Flow": "Trace the complete API request lifecycle in this repository.\n\nExplain:\n\n- entry point\n- routers\n- middleware\n- controllers\n- services\n- database interactions\n- response path\n\nMention relevant source files.",
+        "Find Dependencies": "Analyze this repository and explain the dependency relationships.\n\nInclude\n\n- internal modules\n- important imports\n- service dependencies\n- package usage\n\nHighlight tightly coupled modules.\n\nMention relevant files.",
+        "Find Dead Code": "Analyze this repository and identify code that appears unused.\n\nLook for\n\n- unused functions\n- unused classes\n- unreachable code\n- obsolete modules\n\nOnly report items with reasonable confidence.\n\nIf uncertain, explicitly state that manual verification is recommended.",
+        "Generate Sequence Diagram": "Generate a Mermaid sequence diagram for the primary request flow.\n\nOutput ONLY valid Mermaid markdown.\n\nExample\n\n```mermaid\nsequenceDiagram\nClient->>Router: Request\nRouter->>Service: Process\nService->>Database: Query\nDatabase-->>Service: Result\nService-->>Router: Response\nRouter-->>Client: JSON\n```\n\nInclude a short explanation after the diagram.",
+        "Security Review": "Perform a security review of this repository.\n\nLook for\n\n- authentication\n- authorization\n- secrets\n- insecure APIs\n- SQL injection\n- XSS\n- CSRF\n- path traversal\n- SSRF\n- command injection\n- insecure file handling\n\nPrioritize findings\n\nCritical\n\nHigh\n\nMedium\n\nLow\n\nIf no issues are found, clearly state that no obvious vulnerabilities were detected from the indexed repository."
+    };
+
+    const categoryBPrompts = new Set([
+        "Find Dependencies",
+        "Find Dead Code",
+        "Generate Sequence Diagram",
+        "Security Review"
+    ]);
+
+    const handleActionSubmit = async (prompt: string, label: string) => {
+        setValue("");
+        const userMsg = {
+            id: Date.now().toString(),
+            role: "user",
+            content: prompt,
+            timestamp: Date.now()
+        };
+
+        setMessages(prev => [...prev, userMsg]);
+        adjustHeight(true);
+        setIsTyping(true);
+
+        try {
+            let data;
+            if (categoryBPrompts.has(label)) {
+                data = await api.analyzeRepo(prompt, activeRepo);
+            } else {
+                data = await api.askQuestion(prompt, activeRepo);
+            }
+            const assistantMsg = {
+                id: (Date.now() + 1).toString(),
+                role: "assistant",
+                content: data.answer || "",
+                sources: data.sources || []
+            };
+            setMessages(prev => [...prev, assistantMsg]);
+        } catch (error: any) {
+            console.error(error);
+            const errorMsg = {
+                id: (Date.now() + 1).toString(),
+                role: "assistant",
+                content: `⚠ **Unable to generate a response.**\n\n${error.message || 'Something went wrong while contacting the backend.'}`,
+                sources: []
+            };
+            setMessages(prev => [...prev, errorMsg]);
+        } finally {
+            setIsTyping(false);
+            textareaRef.current?.focus();
+        }
+    };
+
     const handleSendMessage = async () => {
         if (!value.trim()) return;
 
@@ -291,8 +348,8 @@ export function AnimatedAIChat() {
 
         try {
             let data;
-            if (currentQuery.startsWith('/docs ')) {
-                const repoName = currentQuery.replace('/docs ', '').trim() || activeRepo;
+            if (currentQuery.startsWith('/docs')) {
+                const repoName = currentQuery.replace('/docs', '').trim() || activeRepo;
                 data = await api.generateReadme(repoName);
                 const assistantMsg = {
                     id: (Date.now() + 1).toString(),
@@ -301,8 +358,8 @@ export function AnimatedAIChat() {
                     sources: []
                 };
                 setMessages(prev => [...prev, assistantMsg]);
-            } else if (currentQuery.startsWith('/explain ')) {
-                const repoName = currentQuery.replace('/explain ', '').trim() || activeRepo;
+            } else if (currentQuery.startsWith('/architecture')) {
+                const repoName = currentQuery.replace('/architecture', '').trim() || activeRepo;
                 data = await api.explainRepo(repoName);
                 const assistantMsg = {
                     id: (Date.now() + 1).toString(),
@@ -312,7 +369,12 @@ export function AnimatedAIChat() {
                 };
                 setMessages(prev => [...prev, assistantMsg]);
             } else {
-                data = await api.askQuestion(currentQuery, activeRepo);
+                let actualQuery = currentQuery;
+                if (currentQuery.startsWith('/explain')) {
+                    const queryText = currentQuery.replace('/explain', '').trim();
+                    actualQuery = queryText ? `Explain the module: ${queryText}` : "Explain the modules in this repository.";
+                }
+                data = await api.askQuestion(actualQuery, activeRepo);
                 const assistantMsg = {
                     id: (Date.now() + 1).toString(),
                     role: "assistant",
@@ -536,14 +598,14 @@ export function AnimatedAIChat() {
                                     onBlur={() => setInputFocused(false)}
                                     containerClassName="w-full"
                                     className={cn(
-                                        "w-full px-4 py-3",
+                                        "w-full px-4 pt-3 pb-12",
                                         "resize-none",
                                         "bg-transparent",
                                         "border-none",
                                         "text-[#F3F4F6] text-[15px]",
                                         "focus:outline-none",
                                         "placeholder:text-transparent", // Hide default to use custom animated one
-                                        "min-h-[60px]"
+                                        "min-h-[110px]"
                                     )}
                                     style={{
                                         overflow: "hidden",
@@ -568,6 +630,30 @@ export function AnimatedAIChat() {
                                         </AnimatePresence>
                                     </div>
                                 )}
+                                
+                                <div className="absolute bottom-4 right-4 z-10">
+                                    <motion.button
+                                        type="button"
+                                        onClick={handleSendMessage}
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        disabled={isTyping || !value.trim()}
+                                        className={cn(
+                                            "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                                            "flex items-center gap-2",
+                                            value.trim()
+                                                ? "bg-white text-[#080B10] shadow-sm"
+                                                : "bg-[#1A2129] text-[#8B939E]"
+                                        )}
+                                    >
+                                        {isTyping ? (
+                                            <LoaderIcon className="w-4 h-4 animate-[spin_2s_linear_infinite]" />
+                                        ) : (
+                                            <SendIcon className="w-4 h-4" />
+                                        )}
+                                        <span>Send</span>
+                                    </motion.button>
+                                </div>
                             </div>
 
                             <AnimatePresence>
@@ -598,58 +684,6 @@ export function AnimatedAIChat() {
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-
-                            <div className="p-3 border-t border-[#232A32] flex items-center justify-between gap-4 bg-[#11161C] rounded-b-2xl">
-                                <div className="flex items-center gap-2">
-                                    <motion.button
-                                        type="button"
-                                        onClick={handleAttachFile}
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        className="p-2 text-[#8B939E] hover:text-[#F3F4F6] hover:bg-[#1A2129] rounded-lg transition-colors"
-                                    >
-                                        <Paperclip className="w-5 h-5" />
-                                    </motion.button>
-                                    <motion.button
-                                        type="button"
-                                        data-command-button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowCommandPalette(prev => !prev);
-                                        }}
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        className={cn(
-                                            "p-2 text-[#8B939E] hover:text-[#F3F4F6] hover:bg-[#1A2129] rounded-lg transition-colors",
-                                            showCommandPalette && "bg-[#1A2129] text-[#F3F4F6]"
-                                        )}
-                                    >
-                                        <Command className="w-5 h-5" />
-                                    </motion.button>
-                                </div>
-
-                                <motion.button
-                                    type="button"
-                                    onClick={handleSendMessage}
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    disabled={isTyping || !value.trim()}
-                                    className={cn(
-                                        "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                                        "flex items-center gap-2",
-                                        value.trim()
-                                            ? "bg-white text-[#080B10] shadow-sm"
-                                            : "bg-[#1A2129] text-[#8B939E]"
-                                    )}
-                                >
-                                    {isTyping ? (
-                                        <LoaderIcon className="w-4 h-4 animate-[spin_2s_linear_infinite]" />
-                                    ) : (
-                                        <SendIcon className="w-4 h-4" />
-                                    )}
-                                    <span>Send</span>
-                                </motion.button>
-                            </div>
                         </motion.div>
                     </div>
 
@@ -658,7 +692,14 @@ export function AnimatedAIChat() {
                         {commandSuggestions.map((suggestion, index) => (
                             <motion.button
                                 key={suggestion.prefix}
-                                onClick={() => selectCommandSuggestion(index)}
+                                onClick={() => {
+                                    const prompt = quickActionPrompts[suggestion.label];
+                                    if (prompt) {
+                                        handleActionSubmit(prompt, suggestion.label);
+                                    } else {
+                                        selectCommandSuggestion(index);
+                                    }
+                                }}
                                 whileHover={{ scale: 1.02, y: -1 }}
                                 whileTap={{ scale: 0.98 }}
                                 className="flex items-center gap-2.5 px-4 py-2.5 bg-[#11161C] border border-[#232A32] hover:border-[#8B939E]/50 rounded-xl text-sm font-medium text-[#8B939E] hover:text-[#F3F4F6] hover:bg-[#1A2129] transition-all shadow-sm"
