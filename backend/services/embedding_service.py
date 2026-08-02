@@ -3,7 +3,13 @@ from sentence_transformers import SentenceTransformer
 from fastapi import HTTPException
 import uuid
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        _model = SentenceTransformer("all-MiniLM-L6-v2")
+    return _model
 
 client = chromadb.PersistentClient(path="./chroma_db")
 
@@ -13,6 +19,7 @@ collection = client.get_or_create_collection(
 
 
 def create_embedding(text: str):
+    model = get_model()
     embedding = model.encode(text)
     return embedding.tolist()
 
@@ -25,6 +32,7 @@ def store_chunks(chunks, repo_name: str):
     documents = [chunk["content"] for chunk in chunks]
 
     # Generate all embeddings in one batch
+    model = get_model()
     embeddings = model.encode(documents).tolist()
 
     try:
