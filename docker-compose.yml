@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: contextforge-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-nvidia/nemotron-3-super-120b-a12b:free}
+      - PORT=8000
+      - HOST=0.0.0.0
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:80,http://127.0.0.1:5173,http://127.0.0.1:3000
+    volumes:
+      - chroma_data:/app/chroma_db
+      - repos_data:/app/repos
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:8000
+    container_name: contextforge-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  chroma_data:
+    driver: local
+  repos_data:
+    driver: local

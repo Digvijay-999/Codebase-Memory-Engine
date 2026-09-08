@@ -1,27 +1,34 @@
 import os
-
+import json
+from collections import Counter
 from fastapi import APIRouter, HTTPException
 
-
 from schemas.repo_schema import RepoRequest
+from schemas.embedding_schema import EmbeddingRequest
+from schemas.search_schema import SearchRequest
+from schemas.ask_schema import AskRequest
+from schemas.repo_name_schema import RepoNameRequest
 
 from services.repo_service import clone_repository
 from services.file_service import scan_repository
-from services.content_service import read_repository
+from services.content_service import read_repository, get_repository_context
 from services.chunk_service import chunk_documents
-from schemas.embedding_schema import EmbeddingRequest
-from services.embedding_service import create_embedding
-from services.embedding_service import store_chunks
-from schemas.search_schema import SearchRequest
-from services.embedding_service import search_chunks
-from services.llm_service import ask_llm
-from schemas.ask_schema import AskRequest
-from schemas.repo_name_schema import RepoNameRequest
-from services.llm_service import explain_repository
-from services.content_service import get_repository_context
-from services.llm_service import generate_readme
+from services.embedding_service import create_embedding, store_chunks, search_chunks
+from services.llm_service import ask_llm, analyze_repository, explain_repository, generate_readme
+from config.settings import REPOS_DIR
 
 router = APIRouter()
+
+
+def _get_repo_path(repo_name: str) -> str:
+    safe_name = os.path.basename(repo_name)
+    repo_path = os.path.join(REPOS_DIR, safe_name)
+    if not os.path.exists(repo_path):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Repository '{repo_name}' not found."
+        )
+    return repo_path
 
 
 @router.post("/clone")
@@ -31,29 +38,23 @@ def clone_repo(request: RepoRequest):
 
 @router.get("/repos")
 def list_repos():
-    repos_path = "repos"
-    if not os.path.exists(repos_path):
+    if not os.path.exists(REPOS_DIR):
         return {"repositories": []}
     
     repos = []
-    for item in os.listdir(repos_path):
-        if os.path.isdir(os.path.join(repos_path, item)):
-            repos.append(item)
+    try:
+        for item in os.listdir(REPOS_DIR):
+            if os.path.isdir(os.path.join(REPOS_DIR, item)):
+                repos.append(item)
+    except Exception:
+        pass
             
-    return {"repositories": repos}
+    return {"repositories": sorted(repos)}
 
 
 @router.get("/scan/{repo_name}")
 def scan_repo(repo_name: str):
-
-    repo_path = f"repos/{repo_name}"
-
-    if not os.path.exists(repo_path):
-        raise HTTPException(
-            status_code=404,
-            detail="Repository not found."
-        )
-
+    repo_path = _get_repo_path(repo_name)
     files = scan_repository(repo_path)
 
     return {
@@ -65,40 +66,22 @@ def scan_repo(repo_name: str):
 
 @router.get("/content/{repo_name}")
 def get_content(repo_name: str):
-
-    repo_path = f"repos/{repo_name}"
-
-    if not os.path.exists(repo_path):
-        raise HTTPException(
-            status_code=404,
-            detail="Repository not found."
-        )
-
+    repo_path = _get_repo_path(repo_name)
     files = scan_repository(repo_path)
-
     docs = read_repository(repo_path, files)
 
     return {
         "repository": repo_name,
+        "total_documents": len(docs),
         "documents": docs,
     }
 
 
 @router.get("/chunks/{repo_name}")
 def get_chunks(repo_name: str):
-
-    repo_path = f"repos/{repo_name}"
-
-    if not os.path.exists(repo_path):
-        raise HTTPException(
-            status_code=404,
-            detail="Repository not found."
-        )
-
+    repo_path = _get_repo_path(repo_name)
     files = scan_repository(repo_path)
-
     docs = read_repository(repo_path, files)
-
     chunks = chunk_documents(docs)
 
     return {
@@ -110,7 +93,6 @@ def get_chunks(repo_name: str):
 
 @router.post("/embed")
 def embed_text(request: EmbeddingRequest):
-
     embedding = create_embedding(request.text)
 
     return {
@@ -121,32 +103,21 @@ def embed_text(request: EmbeddingRequest):
 
 @router.post("/store/{repo_name}")
 def store_repo(repo_name: str):
-
-    repo_path = f"repos/{repo_name}"
-
-    if not os.path.exists(repo_path):
-        raise HTTPException(
-            status_code=404,
-            detail="Repository not found."
-        )
-
+    repo_path = _get_repo_path(repo_name)
     files = scan_repository(repo_path)
-
     docs = read_repository(repo_path, files)
-
     chunks = chunk_documents(docs)
-
     total = store_chunks(chunks, repo_name)
 
     return {
-    "success": True,
-    "stored_chunks": total
+        "success": True,
+        "repo_name": repo_name,
+        "stored_chunks": total
     }
 
 
 @router.post("/search")
 def search(request: SearchRequest):
-
     results = search_chunks(request.query, request.repo_name)
 
     return {
@@ -160,28 +131,33 @@ def ask(request: AskRequest):
     repo_name_clean = request.repo_name
     results = search_chunks(request.question, repo_name_clean)
 
-    context = "\n\n".join(results["documents"])
+    # Combine chunk search results
+    context_chunks = results.get("documents", [])
+    context = "\n\n".join(context_chunks)
     
-    repo_path = f"repos/{repo_name_clean}"
+    safe_name = os.path.basename(repo_name_clean)
+    repo_path = os.path.join(REPOS_DIR, safe_name)
     readme_path = os.path.join(repo_path, "README.md")
+    
+    sources = []
     if os.path.exists(readme_path):
-        with open(readme_path, "r", encoding="utf-8") as f:
-            context = f"--- README.md ---\n{f.read()[:2000]}\n\n--- Search Results ---\n{context}"
+        try:
+            with open(readme_path, "r", encoding="utf-8", errors="ignore") as f:
+                readme_preview = f.read()[:2000]
+                context = f"--- README.md ---\n{readme_preview}\n\n--- Search Results ---\n{context}"
+                sources.append("README.md")
+        except Exception:
+            pass
+
+    for metadata in results.get("metadatas", []):
+        file = metadata.get("file")
+        if file and file not in sources:
+            sources.append(file)
 
     answer = ask_llm(
         request.question,
         context
     )
-
-    sources = []
-    if os.path.exists(readme_path):
-        sources.append("README.md")
-
-    for metadata in results["metadatas"]:
-        file = metadata["file"]
-
-        if file not in sources:
-            sources.append(file)
 
     return {
         "success": True,
@@ -192,20 +168,12 @@ def ask(request: AskRequest):
 
 @router.post("/analyze")
 def analyze_repo(request: AskRequest):
-    repo_name_clean = request.repo_name
-    repo_path = f"repos/{repo_name_clean}"
-
-    if not os.path.exists(repo_path):
-        raise HTTPException(
-            status_code=404,
-            detail="Repository not found."
-        )
+    repo_path = _get_repo_path(request.repo_name)
 
     files = scan_repository(repo_path)
     docs = read_repository(repo_path, files)
     context = get_repository_context(docs)
 
-    from services.llm_service import analyze_repository
     answer = analyze_repository(request.question, context)
 
     return {
@@ -217,25 +185,7 @@ def analyze_repo(request: AskRequest):
 
 @router.post("/explain")
 def explain(request: RepoNameRequest):
-    print("--- TEMPORARY LOGGING: DOCUMENTATION PIPELINE ---")
-    print(f"Selected repository: {request.repo_name}")
-    repo_path = f"repos/{request.repo_name}"
-    print(f"Repository path: {os.path.abspath(repo_path)}")
-
-    # Mock chunk retrieval log just to verify Chroma filtering for the prompt
-    try:
-        from services.embedding_service import search_chunks
-        test_search = search_chunks("architecture", request.repo_name, n_results=2)
-        print(f"Retrieved chunk metadata: {test_search.get('metadatas', [])}")
-        print(f"Number of chunks retrieved for test: {len(test_search.get('documents', []))}")
-    except Exception as e:
-        print(f"Chroma filtering test failed or no chunks: {e}")
-
-    if not os.path.exists(repo_path):
-        raise HTTPException(
-            status_code=404,
-            detail="Repository not found."
-        )
+    repo_path = _get_repo_path(request.repo_name)
 
     files = scan_repository(repo_path)
     docs = read_repository(repo_path, files)
@@ -244,20 +194,20 @@ def explain(request: RepoNameRequest):
     directories = len(set([os.path.dirname(f) for f in normalized_files if os.path.dirname(f)]))
     
     extensions = [os.path.splitext(f)[1] for f in normalized_files]
-    from collections import Counter
     lang_counts = Counter(extensions)
     languages = ", ".join([f"{ext} ({count})" for ext, count in lang_counts.most_common(5) if ext])
     
     approximate_loc = sum([len(doc["content"].splitlines()) for doc in docs])
-    
-    top_level_folders = list(set([f.split('/')[0] for f in normalized_files if '/' in f]))
+    top_level_folders = sorted(list(set([f.split('/')[0] for f in normalized_files if '/' in f])))
     
     api_endpoints = []
     for doc in docs:
-        if "router" in doc["file"] or "main" in doc["file"]:
+        doc_file = doc["file"].lower()
+        if "router" in doc_file or "main" in doc_file or "app" in doc_file:
             for line in doc["content"].splitlines():
-                if "@router" in line or "@app" in line:
-                    api_endpoints.append(line.strip())
+                line_str = line.strip()
+                if line_str.startswith("@router") or line_str.startswith("@app"):
+                    api_endpoints.append(line_str)
 
     services = [f for f in normalized_files if 'service' in f.lower()]
     schemas = [f for f in normalized_files if 'schema' in f.lower()]
@@ -267,17 +217,16 @@ def explain(request: RepoNameRequest):
         if "requirements.txt" in doc["file"]:
             tech_stack.extend([line.strip() for line in doc["content"].splitlines() if line.strip() and not line.startswith('#')])
         elif "package.json" in doc["file"]:
-            import json
             try:
                 pkg = json.loads(doc["content"])
                 tech_stack.extend(list(pkg.get("dependencies", {}).keys()))
-            except:
+            except Exception:
                 pass
 
     data_flow = "Client Requests -> FastAPI Routers -> Python Services -> LLM / ChromaDB Storage"
     rag_pipeline = "Repository Scanning -> Document Chunking -> Embeddings -> ChromaDB Storage -> Semantic Search"
     
-    important_files = [f for f in normalized_files if f.split('/')[-1] in ["main.py", "app.py", "package.json", "requirements.txt", "README.md"]]
+    important_files = [f for f in normalized_files if f.split('/')[-1] in ["main.py", "app.py", "package.json", "requirements.txt", "README.md", "Dockerfile"]]
 
     structured_metadata = {
         "repository_name": request.repo_name,
@@ -287,22 +236,17 @@ def explain(request: RepoNameRequest):
             "languages": languages,
             "estimated_loc": approximate_loc
         },
-        "technology_stack": tech_stack,
+        "technology_stack": tech_stack[:20],
         "top_level_directory_tree": top_level_folders,
-        "api_endpoints": api_endpoints,
-        "services": services,
-        "schemas": schemas,
+        "api_endpoints": api_endpoints[:25],
+        "services": services[:20],
+        "schemas": schemas[:20],
         "data_flow": data_flow,
         "rag_pipeline": rag_pipeline,
         "important_files": important_files
     }
 
-    import json
     metadata_json = json.dumps(structured_metadata, indent=2)
-
-    print(f"Prompt repository: {structured_metadata['repository_name']}")
-    print("-------------------------------------------------")
-
     context = get_repository_context(docs)
     explanation = explain_repository(context, metadata_json)
 
@@ -315,19 +259,10 @@ def explain(request: RepoNameRequest):
 
 @router.post("/generate-readme")
 def generate_repo_readme(request: RepoNameRequest):
-
-    repo_path = f"repos/{request.repo_name}"
-
-    if not os.path.exists(repo_path):
-        raise HTTPException(
-            status_code=404,
-            detail="Repository not found."
-        )
+    repo_path = _get_repo_path(request.repo_name)
 
     files = scan_repository(repo_path)
-
     docs = read_repository(repo_path, files)
-
     context = get_repository_context(docs)
 
     readme = generate_readme(context)
@@ -337,22 +272,22 @@ def generate_repo_readme(request: RepoNameRequest):
         "readme": readme
     }
 
+
 @router.post("/index")
 def index_repository(request: RepoRequest):
-
     clone = clone_repository(request.repo_url)
+    repo_name = clone.get("repo_name") or os.path.basename(clone["path"])
+    repo_path = os.path.join(REPOS_DIR, repo_name)
 
-    repo_name = os.path.basename(clone["path"])
-
-    scan_repository(f"repos/{repo_name}")
-
-    files = scan_repository(f"repos/{repo_name}")
-    docs = read_repository(f"repos/{repo_name}", files)
+    # Perform single scan, read, chunk, and store
+    files = scan_repository(repo_path)
+    docs = read_repository(repo_path, files)
     chunks = chunk_documents(docs)
     total = store_chunks(chunks, repo_name)
 
     return {
         "success": True,
         "repo_name": repo_name,
+        "total_files": len(files),
         "stored_chunks": total
     }

@@ -1,13 +1,20 @@
+from pathlib import Path
 import os
 from dotenv import load_dotenv
 import openai
 from fastapi import HTTPException
 
-load_dotenv()
+env_path = Path(__file__).resolve().parent.parent / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+else:
+    load_dotenv()
+
+api_key = os.getenv("OPENROUTER_API_KEY") or "dummy-key"
 
 client = openai.OpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY"),
+    api_key=api_key,
 )
 
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
