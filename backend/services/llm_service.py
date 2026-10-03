@@ -10,15 +10,6 @@ if env_path.exists():
 else:
     load_dotenv()
 
-api_key = os.getenv("OPENROUTER_API_KEY") or "dummy-key"
-
-client = openai.OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=api_key,
-)
-
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
-
 import time
 import logging
 
@@ -33,14 +24,25 @@ class OpenRouterConfigException(Exception):
         self.status_code = status_code
         super().__init__(self.message)
 
+def get_openai_client():
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        raise OpenRouterConfigException("OPENROUTER_API_KEY is missing. Please configure it in your environment.", 401)
+    return openai.OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=api_key,
+    )
+
 def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0):
+    client = get_openai_client()
+    model_name = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
     max_retries = 3
     backoff_times = [1, 2, 4]
     
     for attempt in range(max_retries + 1):
         try:
             response = client.chat.completions.create(
-                model=OPENROUTER_MODEL,
+                model=model_name,
                 messages=[{"role": "user", "content": prompt}],
                 timeout=timeout
             )

@@ -3,14 +3,15 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    git \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Pre-install CPU-only PyTorch to eliminate multi-GB NVIDIA CUDA/Triton packages
+RUN pip install --no-cache-dir --user --index-url https://download.pytorch.org/whl/cpu torch
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --no-cache-dir --user --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
+
+# Pre-download SentenceTransformer model for instant offline startup
+ENV PATH=/root/.local/bin:$PATH
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 # Final runtime stage
 FROM python:3.11-slim
@@ -22,8 +23,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed Python packages from builder
+# Copy installed Python packages and pre-cached model from builder
 COPY --from=builder /root/.local /root/.local
+COPY --from=builder /root/.cache /root/.cache
+
 ENV PATH=/root/.local/bin:$PATH
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
