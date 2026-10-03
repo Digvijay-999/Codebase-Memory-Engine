@@ -1,8 +1,17 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Explicitly load backend/.env before reading environment variables
+env_path = BASE_DIR / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+else:
+    load_dotenv()
+
 REPOS_DIR = os.getenv("REPOS_DIR", str(BASE_DIR / "repos"))
 CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", str(BASE_DIR / "chroma_db"))
 
