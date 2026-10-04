@@ -1,10 +1,11 @@
-﻿fastapi==0.138.1
+fastapi==0.138.1
 uvicorn[standard]==0.49.0
 
 gitpython==3.1.50
 
 chromadb==1.5.9
-sentence-transformers==5.1.0
+onnxruntime==1.27.0
+tokenizers==0.22.2
 
 openai==2.48.0
 

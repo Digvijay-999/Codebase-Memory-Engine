@@ -42,6 +42,9 @@ repos/
 **/repos/
 backend/repos/
 
+# Large Model Weights (Keep tokenizer and config files tracked)
+*.onnx
+
 # macOS / OS Files
 .DS_Store
 Thumbs.db

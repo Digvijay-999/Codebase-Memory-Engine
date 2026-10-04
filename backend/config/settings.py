@@ -17,6 +17,7 @@ CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", str(BASE_DIR / "chroma_db"))
 
 # Models & Search
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+MODEL_DIR = Path(os.getenv("MODEL_DIR", str(BASE_DIR / "models" / "all-MiniLM-L6-v2")))
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
 TOP_K_RESULTS = int(os.getenv("TOP_K_RESULTS", "5"))
 

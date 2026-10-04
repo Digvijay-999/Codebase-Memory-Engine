@@ -19,3 +19,4 @@ htmlcov/
 .agents
 .vscode
 .idea
+*.onnx

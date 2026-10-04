@@ -41,6 +41,7 @@ IGNORED_DIRS = {
     ".cache",
     "repos",
     "chroma_db",
+    "models",
     ".gemini",
     ".agents",
     ".vscode",
