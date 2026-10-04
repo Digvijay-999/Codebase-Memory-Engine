@@ -13,10 +13,10 @@ services:
       - path: ./.env
         required: false
     environment:
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-nvidia/nemotron-3-super-120b-a12b:free}
       - PORT=8000
       - HOST=0.0.0.0
+      - FRONTEND_URL=http://localhost:3000
       - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:80,http://127.0.0.1:5173,http://127.0.0.1:3000
     volumes:
       - chroma_data:/app/chroma_db

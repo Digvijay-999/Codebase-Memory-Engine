@@ -31,11 +31,13 @@ CHROMA_BATCH_SIZE = int(os.getenv("CHROMA_BATCH_SIZE", "500"))
 # Server & CORS
 PORT = int(os.getenv("PORT", "8000"))
 HOST = os.getenv("HOST", "0.0.0.0")
-ALLOWED_ORIGINS = [
-    origin.strip() 
-    for origin in os.getenv(
-        "ALLOWED_ORIGINS", 
-        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,*"
-    ).split(",") 
-    if origin.strip()
-]
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+raw_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
+).split(",")
+
+ALLOWED_ORIGINS = [origin.strip() for origin in raw_origins if origin.strip()]
+if FRONTEND_URL and FRONTEND_URL.strip() and FRONTEND_URL.strip() not in ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS.append(FRONTEND_URL.strip())
