@@ -13,7 +13,10 @@ services:
       - key: OPENROUTER_MODEL
         value: nvidia/nemotron-3-super-120b-a12b:free
       - key: FRONTEND_URL
-        sync: false
+        fromService:
+          name: contextforge-frontend
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
 
   - type: web
     name: contextforge-frontend
@@ -23,7 +26,10 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        sync: false
+        fromService:
+          name: contextforge-backend
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
     routes:
       - type: rewrite
         source: /*
