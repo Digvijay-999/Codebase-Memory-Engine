@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 # Paths
@@ -32,54 +31,11 @@ CHROMA_BATCH_SIZE = int(os.getenv("CHROMA_BATCH_SIZE", "500"))
 # Server & CORS
 PORT = int(os.getenv("PORT", "8000"))
 HOST = os.getenv("HOST", "0.0.0.0")
-
-LOCAL_DEV_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
+ALLOWED_ORIGINS = [
+    origin.strip() 
+    for origin in os.getenv(
+        "ALLOWED_ORIGINS", 
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,*"
+    ).split(",") 
+    if origin.strip()
 ]
-
-
-def _normalize_origin(origin: str) -> str:
-    """Normalize origin by stripping whitespace, quotes, trailing slashes, and paths."""
-    if not origin:
-        return ""
-    cleaned = origin.strip().strip("'\"").strip().rstrip("/")
-    if not cleaned:
-        return ""
-    if "://" in cleaned:
-        parsed = urlparse(cleaned)
-        if parsed.scheme and parsed.netloc:
-            return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
-    return cleaned
-
-
-def _parse_origins(raw_value: str) -> list[str]:
-    """Parse comma/newline/semicolon-separated origins and normalize each."""
-    if not raw_value:
-        return []
-    normalized_raw = raw_value.replace("\n", ",").replace(";", ",")
-    origins: list[str] = []
-    for item in normalized_raw.split(","):
-        normalized = _normalize_origin(item)
-        if normalized and normalized not in origins:
-            origins.append(normalized)
-    return origins
-
-
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-raw_allowed = os.getenv("ALLOWED_ORIGINS", "")
-
-# Build ALLOWED_ORIGINS ensuring local development origins are always preserved
-allowed_origins_list: list[str] = list(LOCAL_DEV_ORIGINS)
-
-for origin in _parse_origins(raw_allowed):
-    if origin not in allowed_origins_list:
-        allowed_origins_list.append(origin)
-
-for origin in _parse_origins(FRONTEND_URL):
-    if origin not in allowed_origins_list:
-        allowed_origins_list.append(origin)
-
-ALLOWED_ORIGINS = allowed_origins_list
