@@ -28,6 +28,7 @@ import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motio
 import * as React from "react"
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { convertSafeHtmlToMarkdown, resolveLinkHref, resolveImageSrc } from '../../lib/markdownUtils';
 
 interface UseAutoResizeTextareaProps {
     minHeight: number;
@@ -139,6 +140,7 @@ Textarea.displayName = "Textarea"
 
 export function AnimatedAIChat() {
     const [activeRepo, setActiveRepo] = useState(() => localStorage.getItem('repo_name') || 'unknown');
+    const [repoUrl, setRepoUrl] = useState(() => localStorage.getItem('repo_url') || '');
     const [activeChunks, setActiveChunks] = useState(() => localStorage.getItem('stored_chunks') || '0');
     const [value, setValue] = useState("");
     const [attachments, setAttachments] = useState<string[]>([]);
@@ -147,7 +149,7 @@ export function AnimatedAIChat() {
     const [activeSuggestion, setActiveSuggestion] = useState<number>(-1);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [recentCommand, setRecentCommand] = useState<string | null>(null);
-    
+
     const [messages, setMessages] = useState<any[]>(() => {
         const saved = localStorage.getItem('chatHistory');
         if (saved) {
@@ -167,6 +169,17 @@ export function AnimatedAIChat() {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages]);
+
+    useEffect(() => {
+        if (activeRepo && activeRepo !== 'unknown' && !repoUrl) {
+            api.scanRepo(activeRepo).then((res: any) => {
+                if (res && res.repo_url) {
+                    setRepoUrl(res.repo_url);
+                    localStorage.setItem('repo_url', res.repo_url);
+                }
+            }).catch(() => {});
+        }
+    }, [activeRepo, repoUrl]);
 
     const { textareaRef, adjustHeight } = useAutoResizeTextarea({
         minHeight: 60,
@@ -351,11 +364,17 @@ export function AnimatedAIChat() {
             if (currentQuery.startsWith('/docs')) {
                 const repoName = currentQuery.replace('/docs', '').trim() || activeRepo;
                 data = await api.generateReadme(repoName);
+                const targetRepoUrl = data.repo_url || repoUrl;
+                if (data.repo_url) {
+                    setRepoUrl(data.repo_url);
+                    localStorage.setItem('repo_url', data.repo_url);
+                }
                 const assistantMsg = {
                     id: (Date.now() + 1).toString(),
                     role: "assistant",
                     content: data.readme || "No readme generated.",
-                    sources: []
+                    sources: [],
+                    repoUrl: targetRepoUrl
                 };
                 setMessages(prev => [...prev, assistantMsg]);
             } else if (currentQuery.startsWith('/architecture')) {
@@ -481,11 +500,11 @@ export function AnimatedAIChat() {
                                         {msg.role === 'user' ? 'You' : <><Sparkles className="w-4 h-4" /> ContextForge</>}
                                     </h3>
 
-                                    <div 
+                                    <div
                                         className="text-[#C8CDD4] break-words w-full overflow-hidden"
                                         style={{ lineHeight: '1.75' }}
                                     >
-                                        <ReactMarkdown 
+                                        <ReactMarkdown
                                             remarkPlugins={[remarkGfm]}
                                             components={{
                                                 table: ({node, ...props}) => <div className="overflow-x-auto my-4 w-full"><table className="min-w-full divide-y divide-[#232A32] border border-[#232A32] rounded-lg" {...props} /></div>,
@@ -498,7 +517,7 @@ export function AnimatedAIChat() {
                                                 code: ({node, className, children, ...props}: any) => {
                                                     const match = /language-(\w+)/.exec(className || '')
                                                     const isInline = !match && !className?.includes('language-')
-                                                    return isInline 
+                                                    return isInline
                                                     ? <code className="bg-[#1A2129] text-[#4ADE80] px-1.5 py-0.5 rounded text-sm font-mono border border-[#232A32]" {...props}>{children}</code>
                                                     : <code className={cn("font-mono text-sm text-[#F3F4F6]", className)} {...props}>{children}</code>
                                                 },
@@ -510,10 +529,35 @@ export function AnimatedAIChat() {
                                                 ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-4 space-y-2" {...props} />,
                                                 li: ({node, ...props}) => <li className="text-[#C8CDD4]" {...props} />,
                                                 p: ({node, ...props}) => <p className="my-4 leading-relaxed" {...props} />,
-                                                a: ({node, ...props}) => <a className="text-[#4ADE80] hover:underline" target="_blank" rel="noopener noreferrer" {...props} />
+                                                a: ({node, href, ...props}: any) => {
+                                                    const targetRepo = msg.repoUrl || repoUrl;
+                                                    const finalHref = resolveLinkHref(href, targetRepo);
+                                                    return (
+                                                        <a
+                                                            className="text-[#4ADE80] hover:underline"
+                                                            href={finalHref}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            {...props}
+                                                        />
+                                                    );
+                                                },
+                                                img: ({node, src, alt, ...props}: any) => {
+                                                    const targetRepo = msg.repoUrl || repoUrl;
+                                                    const finalSrc = resolveImageSrc(src, targetRepo);
+                                                    return (
+                                                        <img
+                                                            className="rounded-lg max-h-48 max-w-full my-4 mx-auto object-contain block border border-[#232A32] bg-[#1A2129]/40 p-2"
+                                                            src={finalSrc}
+                                                            alt={alt || ''}
+                                                            loading="lazy"
+                                                            {...props}
+                                                        />
+                                                    );
+                                                }
                                             }}
                                         >
-                                            {msg.content.replace(/\r/g, '')}
+                                            {convertSafeHtmlToMarkdown(msg.content.replace(/\r/g, ''))}
                                         </ReactMarkdown>
                                     </div>
 
@@ -630,7 +674,7 @@ export function AnimatedAIChat() {
                                         </AnimatePresence>
                                     </div>
                                 )}
-                                
+
                                 <div className="absolute bottom-4 right-4 z-10">
                                     <motion.button
                                         type="button"
@@ -771,7 +815,7 @@ function SkeletonMessage() {
             <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
                 <Sparkles className="w-4 h-4" /> ContextForge
             </h3>
-            
+
             <DynamicLoadingText />
 
             <div className="space-y-6">

@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import re
 from dotenv import load_dotenv
 import openai
 from fastapi import HTTPException
@@ -225,16 +226,65 @@ Repository Context:
     return call_openrouter_with_backoff(prompt, timeout=120.0)
 
 
-def generate_readme(context: str):
+def _normalize_readme_output(content: str, repo_url: str = "") -> str:
+    if not content:
+        return ""
 
-    prompt = f"""
-You are an expert software engineer.
+    text = content.strip()
 
-Generate a professional GitHub README.md for this repository.
+    # Strip only accidental outer code fences wrapping the entire output
+    lines = text.splitlines()
+    if len(lines) >= 2:
+        first_line = lines[0].strip()
+        last_line = lines[-1].strip()
+        if first_line in ("```markdown", "```md", "```") and last_line == "```":
+            text = "\n".join(lines[1:-1]).strip()
+
+    # Clean any localhost URLs pointing to files
+    if repo_url:
+        clean_repo_url = repo_url.rstrip("/")
+        text = re.sub(
+            r"https?://(?:localhost|127\.0\.0\.1)(?::\d+)?/([A-Za-z0-9_\-\./]+)",
+            lambda m: f"{clean_repo_url}/blob/HEAD/{m.group(1)}",
+            text
+        )
+    else:
+        text = re.sub(
+            r"https?://(?:localhost|127\.0\.0\.1)(?::\d+)?/([A-Za-z0-9_\-\./]+)",
+            r"\1",
+            text
+        )
+
+    return text
+
+
+def generate_readme(context: str, repo_name: str = "", repo_url: str = ""):
+    repo_info = ""
+    if repo_name:
+        repo_info += f"\nRepository Name: {repo_name}"
+    if repo_url:
+        repo_info += f"\nRepository Source URL: {repo_url}"
+
+    url_instruction = (
+        f"For links to files in the repository (e.g. LICENSE or documentation), use the source repository URL ({repo_url}/blob/HEAD/<file>) or clean repository-relative paths (e.g. LICENSE.txt). NEVER generate localhost URLs (e.g. http://localhost:5173 or http://localhost:8000)."
+        if repo_url
+        else "For links to files in the repository, use clean relative paths (e.g. LICENSE.txt). NEVER generate localhost URLs."
+    )
+
+    prompt = f"""You are an expert software engineer.
+
+Generate a professional GitHub README.md for this repository.{repo_info}
+
+CRITICAL INSTRUCTIONS:
+- Return the Markdown content directly.
+- NEVER wrap the entire README in an outer code fence (do not start with ```markdown or ```).
+- Legitimate code blocks inside sections (e.g. installation/usage commands) MUST still use normal fenced code blocks with appropriate language tags.
+- Use standard Markdown images (![Alt](url)) instead of raw HTML <div>/<img> tags where possible.
+- {url_instruction}
 
 Include:
 
-# Project Name
+# {repo_name if repo_name else 'Project Name'}
 
 ## Overview
 
@@ -250,9 +300,12 @@ Include:
 
 ## Contributing
 
+## License
+
 Repository Context:
 
 {context}
 """
 
-    return call_openrouter_with_backoff(prompt, timeout=120.0)
+    raw_readme = call_openrouter_with_backoff(prompt, timeout=120.0)
+    return _normalize_readme_output(raw_readme, repo_url=repo_url)

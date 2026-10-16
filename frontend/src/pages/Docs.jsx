@@ -5,11 +5,13 @@ import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { convertSafeHtmlToMarkdown, resolveLinkHref, resolveImageSrc } from '../lib/markdownUtils';
 
 export default function Docs() {
   const [report, setReport] = useState('');
   const [loading, setLoading] = useState(true);
   const [repoName, setRepoName] = useState('Core Engine');
+  const [repoUrl, setRepoUrl] = useState(() => localStorage.getItem('repo_url') || '');
 
   const handleExport = () => {
     const isInvalidReport = !report || report.startsWith('**Error') || report.includes('No repositories') || report === 'No documentation generated.';
@@ -19,13 +21,13 @@ export default function Docs() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    
+
     const safeRepoName = repoName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     link.download = `${safeRepoName}-architecture-report.md`;
-    
+
     document.body.appendChild(link);
     link.click();
-    
+
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
@@ -35,11 +37,15 @@ export default function Docs() {
       try {
         const currentRepo = localStorage.getItem('repo_name');
         console.log('Selected repository:', currentRepo);
-        
+
         if (currentRepo) {
           setRepoName(currentRepo);
           console.log('Sending repo_name to backend:', currentRepo);
           const data = await api.explainRepo(currentRepo);
+          if (data && data.repo_url) {
+            setRepoUrl(data.repo_url);
+            localStorage.setItem('repo_url', data.repo_url);
+          }
           setReport(data.explanation || 'No documentation generated.');
         } else {
           setRepoName('None');
@@ -58,16 +64,16 @@ export default function Docs() {
   return (
     <div className="flex h-screen bg-bg overflow-hidden selection:bg-surface-elevated selection:text-accent">
       <AppSidebar />
-      
+
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         <header className="h-14 border-b border-border bg-surface flex items-center justify-between px-6">
           <div className="flex items-center gap-3">
             <FileText size={18} className="text-text-secondary" />
             <span className="font-medium text-text-primary">Architecture Report: {repoName}</span>
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             className="gap-2"
             onClick={handleExport}
             disabled={loading || !report || report.startsWith('**Error') || report.includes('No repositories') || report === 'No documentation generated.'}
@@ -97,10 +103,34 @@ export default function Docs() {
                     td: ({node, ...props}) => <td className="px-4 py-3 text-sm text-[#C8CDD4]" {...props} />,
                     pre: ({node, ...props}) => <pre className="bg-[#1A2129] p-4 rounded-xl border border-[#232A32] overflow-x-auto my-4 text-sm w-full" {...props} />,
                     h1: ({node, ...props}) => <h1 className="text-4xl text-text-primary mb-8 tracking-tight" {...props} />,
-                    h2: ({node, ...props}) => <h2 className="text-2xl text-text-primary mt-12 mb-6 border-b border-border pb-4" {...props} />
+                    h2: ({node, ...props}) => <h2 className="text-2xl text-text-primary mt-12 mb-6 border-b border-border pb-4" {...props} />,
+                    a: ({node, href, ...props}) => {
+                      const finalHref = resolveLinkHref(href, repoUrl);
+                      return (
+                        <a
+                          className="text-[#4ADE80] hover:underline"
+                          href={finalHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          {...props}
+                        />
+                      );
+                    },
+                    img: ({node, src, alt, ...props}) => {
+                      const finalSrc = resolveImageSrc(src, repoUrl);
+                      return (
+                        <img
+                          className="rounded-lg max-h-48 max-w-full my-4 mx-auto object-contain block border border-[#232A32] bg-[#1A2129]/40 p-2"
+                          src={finalSrc}
+                          alt={alt || ''}
+                          loading="lazy"
+                          {...props}
+                        />
+                      );
+                    }
                   }}
                 >
-                  {report}
+                  {convertSafeHtmlToMarkdown(report)}
                 </ReactMarkdown>
               </article>
             )}

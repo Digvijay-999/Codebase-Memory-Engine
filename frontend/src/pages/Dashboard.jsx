@@ -46,6 +46,9 @@ export default function Dashboard() {
         localStorage.setItem('repo_name', response.repo_name);
         localStorage.setItem('repositoryIndexed', 'true');
         localStorage.setItem('stored_chunks', response.stored_chunks || 0);
+        if (repoUrl) {
+          localStorage.setItem('repo_url', repoUrl.trim());
+        }
         
         setRepoData({
           name: response.repo_name,
@@ -66,6 +69,7 @@ export default function Dashboard() {
 
   const handleReindex = () => {
     localStorage.removeItem('repo_name');
+    localStorage.removeItem('repo_url');
     localStorage.removeItem('repositoryIndexed');
     localStorage.removeItem('stored_chunks');
     localStorage.removeItem('chatHistory');

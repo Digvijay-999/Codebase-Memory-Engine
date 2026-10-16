@@ -15,9 +15,21 @@ from services.content_service import read_repository, get_repository_context
 from services.chunk_service import chunk_documents
 from services.embedding_service import create_embedding, store_chunks, search_chunks
 from services.llm_service import ask_llm, analyze_repository, explain_repository, generate_readme
+from git import Repo
 from config.settings import REPOS_DIR
 
 router = APIRouter()
+
+
+def _get_repo_origin_url(repo_path: str) -> str:
+    try:
+        repo = Repo(repo_path)
+        url = repo.remotes.origin.url.strip()
+        if url.endswith(".git"):
+            url = url[:-4]
+        return url
+    except Exception:
+        return ""
 
 
 def _get_repo_path(repo_name: str) -> str:
@@ -55,10 +67,12 @@ def list_repos():
 @router.get("/scan/{repo_name}")
 def scan_repo(repo_name: str):
     repo_path = _get_repo_path(repo_name)
+    repo_url = _get_repo_origin_url(repo_path)
     files = scan_repository(repo_path)
 
     return {
         "repository": repo_name,
+        "repo_url": repo_url,
         "total_files": len(files),
         "files": files,
     }
@@ -186,6 +200,7 @@ def analyze_repo(request: AskRequest):
 @router.post("/explain")
 def explain(request: RepoNameRequest):
     repo_path = _get_repo_path(request.repo_name)
+    repo_url = _get_repo_origin_url(repo_path)
 
     files = scan_repository(repo_path)
     docs = read_repository(repo_path, files)
@@ -253,6 +268,7 @@ def explain(request: RepoNameRequest):
     return {
         "success": True,
         "repository": request.repo_name,
+        "repo_url": repo_url,
         "explanation": explanation
     }
 
@@ -260,15 +276,18 @@ def explain(request: RepoNameRequest):
 @router.post("/generate-readme")
 def generate_repo_readme(request: RepoNameRequest):
     repo_path = _get_repo_path(request.repo_name)
+    repo_url = _get_repo_origin_url(repo_path)
 
     files = scan_repository(repo_path)
     docs = read_repository(repo_path, files)
     context = get_repository_context(docs)
 
-    readme = generate_readme(context)
+    readme = generate_readme(context, repo_name=request.repo_name, repo_url=repo_url)
 
     return {
         "success": True,
+        "repo_name": request.repo_name,
+        "repo_url": repo_url,
         "readme": readme
     }
 

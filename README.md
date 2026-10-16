@@ -1,99 +1,77 @@
 # ContextForge
 
-ContextForge is a robust full-stack application that provides an AI-powered Codebase Memory Engine. It allows users to clone repositories, index their codebase into a vector database, and interact with the code through semantic search, architectural analysis, and AI chat.
+ContextForge is an AI codebase memory engine. It indexes a Git repository so you can explore its code with repository-scoped semantic search, ask questions about implementation details, and generate architecture notes or a README.
 
-## Features
-- **Semantic Code Search:** Index and search through codebase using ChromaDB and Sentence Transformers.
-- **AI Chat:** Chat with the codebase, ask for explanations, or trace API flows.
-- **Architectural Analysis:** Generate comprehensive architecture reports for repositories.
-- **Documentation Generation:** Automatically generate documentation and export as Markdown.
-- **Repository Isolation:** Handle multiple repositories seamlessly with distinct context isolation.
+## What it does
 
-## Tech Stack
-### Frontend
-- React (Vite)
-- TailwindCSS
-- Framer Motion
+- Clones and indexes repositories as code chunks with file and repository metadata.
+- Retrieves relevant code with semantic search and uses it as context for AI chat and explanations.
+- Generates architecture and README documentation.
+- Keeps each repository's indexed chunks isolated in ChromaDB.
 
-### Backend
-- FastAPI
-- ChromaDB
-- Sentence Transformers
-- OpenRouter
+## Stack
 
-## Prerequisites
-- Node.js (v18+)
-- Python (3.10+)
-- Git
+- **Frontend:** React, Vite, Tailwind CSS
+- **API:** FastAPI
+- **Embeddings:** all-MiniLM-L6-v2 with Tokenizers and ONNX Runtime on CPU
+- **Vector storage:** ChromaDB
+- **LLM requests:** OpenRouter
 
-## Installation & Setup
+## Run with Docker Compose
 
-### 1. Clone the repository
+Prerequisites: Docker with the Compose plugin and Git.
+
 ```bash
-git clone <repository-url>
-cd contextforge
+git clone https://github.com/Digvijay-999/Codebase-Memory-Engine.git
+cd Codebase-Memory-Engine
 ```
 
-### 2. Backend Setup
+For chat and AI-generated documentation, add an OpenRouter API key to a root `.env` file:
+
+```env
+OPENROUTER_API_KEY=your_openrouter_api_key
+```
+
+Build and start the app:
+
+```bash
+docker compose up --build
+```
+
+Open the frontend at [http://localhost:3000](http://localhost:3000). The API is available at [http://localhost:8000](http://localhost:8000), with its health endpoint at `/health`.
+
+The backend image downloads the all-MiniLM-L6-v2 ONNX model during its build. Docker Compose stores the ChromaDB index and cloned repositories in named volumes so they persist across container restarts.
+
+To stop the app, run `docker compose down`. To also delete the stored index and cloned repositories, use `docker compose down -v`.
+
+## Local development
+
+Use Python 3.10+ and Node.js 18+.
+
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Environment Variables
-Create a `.env` file in the `backend/` directory with the following variables:
-```env
-OPENROUTER_API_KEY=your_openrouter_api_key_here
-```
+Set `OPENROUTER_API_KEY` in `backend/.env` if you want to use chat and AI documentation. The backend also needs the ONNX model and tokenizer files under `backend/models/all-MiniLM-L6-v2` (the Docker build fetches the model file automatically).
 
-*(Optional)* Create a `.env` file in the `frontend/` directory to override the API base URL:
-```env
-VITE_API_URL=http://127.0.0.1:8000
-```
+Start the API from `backend/`:
 
-### 4. Frontend Setup
 ```bash
-cd frontend
-npm install
-```
-
-## Running the Application
-
-### Development Mode
-
-**Backend:**
-```bash
-cd backend
-source venv/bin/activate
 uvicorn main:app --reload
 ```
 
-**Frontend:**
+In another terminal, start the frontend:
+
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-### Production Build
+## Current limitations
 
-**Frontend:**
-```bash
-cd frontend
-npm run build
-```
-Serve the `dist/` directory using your preferred static web server (e.g., Nginx, Caddy).
-
-**Backend:**
-```bash
-cd backend
-source venv/bin/activate
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-## Known MVP Limitations
-- **Authentication:** Currently there is no user authentication or multi-tenant isolation.
-- **Rate Limiting:** No built-in rate limiting for API endpoints.
-- **Concurrency:** Handling massive concurrent cloning operations is currently limited by the single instance performance.
-- **File Limits:** Excludes extremely large or binary files from indexing by default.
+ContextForge is an evolving project. It does not currently include user authentication or built-in rate limiting, and its indexing and API workload is designed for a single application instance.
