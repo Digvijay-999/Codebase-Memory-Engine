@@ -5,7 +5,10 @@ import { useInView } from 'framer-motion';
 // Lazy load the Spline component to avoid blocking the main thread
 const LazySpline = lazy(() => import('@splinetool/react-spline'));
 
-const SPLINE_SCENE_URL = "https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode";
+// Self-hosted in public/spline/ (no CDN requests). process.wasm comes from @splinetool/modelling-wasm and must
+// match the @splinetool/runtime version (1.12.98); replace it when upgrading the runtime.
+const SPLINE_SCENE_URL = "/spline/scene.splinecode";
+const SPLINE_WASM_PATH = "/spline";
 
 function Skeleton() {
   return (
@@ -66,6 +69,7 @@ export function SplineRobot({ className }) {
         <Suspense fallback={<Skeleton />}>
           <LazySpline 
             scene={SPLINE_SCENE_URL} 
+            wasmPath={SPLINE_WASM_PATH}
             onLoad={(app) => { splineAppRef.current = app; }}
             onError={() => setHasError(true)}
             style={{ width: '100%', height: '100%' }}

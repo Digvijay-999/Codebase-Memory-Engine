@@ -10,7 +10,10 @@ export default defineConfig({
     proxy: { '/api': { target: 'http://localhost:8001', rewrite: (path) => path.replace(/^\/api/, '') } },
   },
   build: {
-    chunkSizeWarningLimit: 1200,
+    // Only Spline's chunks are this big (react-spline ~2.0 MB, its physics module ~2.0 MB). Both are lazy-loaded and
+    // desktop-only: the robot is hidden below lg and loads when it scrolls into view; physics loads only if a scene uses it.
+    // The limit sits just above them, so any other chunk that grows large still warns.
+    chunkSizeWarningLimit: 2100,
     rollupOptions: {
       output: {
         manualChunks(id) {
