@@ -27,12 +27,15 @@ const fetchWithTimeout = async (url, options = {}) => {
     });
     
     if (!response.ok) {
-      let errorMessage = 'An error occurred';
+      const body = await response.text();
+      let errorMessage = response.statusText || `Request failed with status ${response.status}`;
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorData.detail || errorData.message || errorMessage;
-      } catch (e) {
-        errorMessage = await response.text();
+        const errorData = JSON.parse(body);
+        // FastAPI validation errors (422) send detail as a list of {msg, ...}
+        const detail = Array.isArray(errorData.detail) ? errorData.detail[0]?.msg : errorData.detail;
+        errorMessage = (typeof detail === 'string' && detail) || errorData.error || errorData.message || errorMessage;
+      } catch {
+        // Non-JSON body (e.g. proxy error page): keep the status text
       }
       throw new Error(errorMessage);
     }
@@ -41,9 +44,9 @@ const fetchWithTimeout = async (url, options = {}) => {
   } catch (error) {
     if (error.name === 'AbortError' || controller.signal.aborted) {
       if (timedOut) {
-        throw new Error(`Request timed out after ${Math.round(timeout / 1000)}s. The AI provider is under high demand; please retry.`);
+        throw new Error(`Request timed out after ${Math.round(timeout / 1000)}s. The AI provider is under high demand; please retry.`, { cause: error });
       }
-      throw new Error('Request was cancelled.');
+      throw new Error('Request was cancelled.', { cause: error });
     }
     throw error;
   } finally {
