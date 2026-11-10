@@ -141,7 +141,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 Textarea.displayName = "Textarea"
 
 export function AnimatedAIChat() {
-    const [activeRepo, setActiveRepo] = useState(() => localStorage.getItem('repo_name') || 'unknown');
+    const [activeRepo, setActiveRepo] = useState(() => localStorage.getItem('repo_name') || '');
     const [repoUrl, setRepoUrl] = useState(() => localStorage.getItem('repo_url') || '');
     const [activeChunks, setActiveChunks] = useState(() => localStorage.getItem('stored_chunks') || '0');
     const [value, setValue] = useState("");
@@ -173,7 +173,7 @@ export function AnimatedAIChat() {
     }, [messages]);
 
     useEffect(() => {
-        if (activeRepo && activeRepo !== 'unknown' && !repoUrl) {
+        if (activeRepo && !repoUrl) {
             api.scanRepo(activeRepo).then((res: any) => {
                 if (res && res.repo_url) {
                     setRepoUrl(res.repo_url);
@@ -333,6 +333,16 @@ export function AnimatedAIChat() {
 
         setMessages(prev => [...prev, userMsg]);
         adjustHeight(true);
+
+        if (!activeRepo) {
+            setMessages(prev => [...prev, {
+                id: (Date.now() + 1).toString(),
+                role: "assistant",
+                content: "No repository is indexed yet. Go to **Overview** to index a repository, then ask again.",
+                sources: []
+            }]);
+            return;
+        }
         setIsTyping(true);
 
         const controller = new AbortController();
@@ -399,6 +409,16 @@ export function AnimatedAIChat() {
             adjustHeight(true);
         } else {
             setMessages(prev => [...prev, { ...userMsg, id: Date.now().toString() }]);
+        }
+
+        if (!activeRepo) {
+            setMessages(prev => [...prev, {
+                id: (Date.now() + 1).toString(),
+                role: "assistant",
+                content: "No repository is indexed yet. Go to **Overview** to index a repository, then ask again.",
+                sources: []
+            }]);
+            return;
         }
         setIsTyping(true);
 
@@ -539,14 +559,14 @@ export function AnimatedAIChat() {
                                     <GitBranch className="w-4 h-4 text-[#F3F4F6]" />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="font-semibold text-[#F3F4F6] text-sm">{activeRepo}</span>
-                                    <span className="text-xs text-[#8B939E] font-medium mt-0.5">{Number(activeChunks).toLocaleString()} Chunks • Indexed</span>
+                                    <span className="font-semibold text-[#F3F4F6] text-sm">{activeRepo || 'No repository indexed'}</span>
+                                    {activeRepo && <span className="text-xs text-[#8B939E] font-medium mt-0.5">{Number(activeChunks).toLocaleString()} Chunks • Indexed</span>}
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2 mt-3 sm:mt-0 px-3 py-1.5 rounded-md bg-[#4ADE80]/10 border border-[#4ADE80]/20">
+                            {activeRepo && <div className="flex items-center gap-2 mt-3 sm:mt-0 px-3 py-1.5 rounded-md bg-[#4ADE80]/10 border border-[#4ADE80]/20">
                                 <div className="w-1.5 h-1.5 rounded-full bg-[#4ADE80]" />
                                 <span className="text-xs font-semibold text-[#4ADE80]">Healthy</span>
-                            </div>
+                            </div>}
                         </motion.div>
 
                         <AnimatePresence initial={false}>
@@ -714,6 +734,8 @@ export function AnimatedAIChat() {
                                         adjustHeight();
                                     }}
                                     onKeyDown={handleKeyDown}
+                                    aria-label="Ask a question about your codebase"
+                                    maxLength={4000}
                                     onFocus={() => setInputFocused(true)}
                                     onBlur={() => setInputFocused(false)}
                                     containerClassName="w-full"
@@ -766,7 +788,7 @@ export function AnimatedAIChat() {
                                     )}
                                     <motion.button
                                         type="button"
-                                        onClick={handleSendMessage}
+                                        onClick={() => handleSendMessage()}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         disabled={isTyping || !value.trim()}

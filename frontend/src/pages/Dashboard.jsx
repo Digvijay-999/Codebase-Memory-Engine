@@ -210,6 +210,7 @@ export default function Dashboard() {
                       value={repoUrl}
                       onChange={(e) => setRepoUrl(e.target.value)}
                       placeholder="https://github.com/user/repo" 
+                      aria-label="GitHub repository URL"
                       className="w-full bg-bg border border-border rounded-lg px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-text-secondary transition-colors disabled:opacity-50"
                     />
                     <p className="text-xs text-text-muted mt-2 pt-1 leading-relaxed">
