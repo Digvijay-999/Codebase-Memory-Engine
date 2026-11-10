@@ -1,5 +1,5 @@
 """Self-check (no network, no LLM quota): whole-repo calls use OPENROUTER_MODEL_LONG with its own fallbacks and
-reasoning off; /ask uses the primary chain with no reasoning override. Run from backend/: python test_llm_routing.py"""
+reasoning off; /ask uses the primary chain with no reasoning override. Run from backend/: python -m scripts.manual.test_llm_routing"""
 import os
 from types import SimpleNamespace
 

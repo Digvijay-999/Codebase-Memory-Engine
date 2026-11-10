@@ -1,5 +1,5 @@
 """Self-check (no network, no LLM quota): the total LLM deadline returns a 504 on time and cancels the
-in-flight upstream call. Run from backend/: python test_llm_deadline.py"""
+in-flight upstream call. Run from backend/: python -m scripts.manual.test_llm_deadline"""
 import time
 
 import anyio
