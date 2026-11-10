@@ -164,10 +164,10 @@ export function Navbar() {
 
             {/* CTA & Mobile Toggle */}
             <div className="flex items-center gap-4">
-              <Link to="/dashboard" className="hidden md:block">
-                <button className="bg-white text-[#080B10] hover:bg-[#F3F4F6] transition-colors font-medium text-[15px] px-5 py-2 rounded-full border-none outline-none">
+              <Link to="/dashboard" className="hidden md:block rounded-full">
+                <span className="inline-block bg-white text-[#080B10] hover:bg-[#F3F4F6] transition-colors font-medium text-[15px] px-5 py-2 rounded-full border-none outline-none">
                   Launch Workspace
-                </button>
+                </span>
               </Link>
               
               <button 
@@ -229,10 +229,10 @@ export function Navbar() {
                 );
               })}
               <div className="h-px bg-[#232A32] my-2 w-full" />
-              <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="w-full">
-                <button className="bg-white text-[#080B10] font-medium text-[16px] w-full py-3 rounded-xl border-none outline-none">
+              <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="w-full rounded-xl">
+                <span className="inline-block text-center bg-white text-[#080B10] font-medium text-[16px] w-full py-3 rounded-xl border-none outline-none">
                   Launch Workspace
-                </button>
+                </span>
               </Link>
             </motion.div>
           )}

@@ -19,19 +19,19 @@ export function AppSidebar({ className }) {
   const location = useLocation();
 
   return (
-    <aside className={cn("w-64 border-r border-[#232A32] bg-[#11161C] h-screen flex flex-col", className)}>
-      <div className="p-5 border-b border-[#232A32]">
-        <Link to="/" className="flex items-center gap-3 group">
+    <aside className={cn("w-[64px] md:w-64 shrink-0 border-r border-[#232A32] bg-[#11161C] h-screen flex flex-col", className)}>
+      <div className="px-2 py-3 md:p-5 border-b border-[#232A32]">
+        <Link to="/" title="ContextForge" className="flex items-center justify-center md:justify-start min-h-11 md:min-h-0 gap-3 group">
           <div className="w-7 h-7 rounded-md bg-white flex items-center justify-center shrink-0">
             <div className="w-3.5 h-3.5 bg-[#080B10] rounded-sm" />
           </div>
-          <span className="font-heading font-semibold text-[#F3F4F6] tracking-tight truncate text-lg">ContextForge</span>
+          <span className="font-heading font-semibold text-[#F3F4F6] tracking-tight truncate text-lg sr-only md:not-sr-only">ContextForge</span>
         </Link>
       </div>
 
-      <div className="p-4 flex-1 flex flex-col">
+      <div className="p-2 md:p-4 flex-1 flex flex-col">
         <div className="flex items-center gap-2 px-3 py-2 mb-2 text-xs font-semibold text-[#8B939E] uppercase tracking-[0.1em]">
-          Workspace
+          <span className="sr-only md:not-sr-only">Workspace</span>
         </div>
         <nav className="space-y-1">
           {SIDEBAR_LINKS.map((link) => {
@@ -42,15 +42,16 @@ export function AppSidebar({ className }) {
               <Link
                 key={link.path}
                 to={link.path}
+                title={link.label}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ease-in-out",
+                  "flex items-center justify-center md:justify-start min-h-11 md:min-h-0 gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ease-in-out",
                   isActive 
                     ? "bg-white/[0.04] text-white shadow-sm" 
                     : "text-[#8B939E] hover:bg-[#1A2129] hover:text-white"
                 )}
               >
                 <Icon size={18} className={cn("transition-colors", isActive ? "text-white" : "text-[#8B939E]")} />
-                {link.label}
+                <span className="sr-only md:not-sr-only">{link.label}</span>
               </Link>
             );
           })}

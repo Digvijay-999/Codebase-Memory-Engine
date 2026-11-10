@@ -68,15 +68,15 @@ export function Hero() {
             variants={itemVariants}
             className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-12"
           >
-            <Link to="/dashboard" className="transition-opacity hover:opacity-90">
-              <button className="bg-white text-[#080B10] font-medium text-[15px] px-6 py-3 rounded-full flex items-center justify-center w-fit shadow-sm">
+            <Link to="/dashboard" className="transition-opacity hover:opacity-90 rounded-full">
+              <span className="bg-white text-[#080B10] font-medium text-[15px] px-6 py-3 rounded-full flex items-center justify-center w-fit shadow-sm">
                 Launch Workspace
-              </button>
+              </span>
             </Link>
-            <Link to="#how-it-works" className="transition-opacity hover:opacity-80 group">
-              <button className="bg-transparent text-[#F3F4F6] border border-[#232A32] font-medium text-[15px] px-6 py-3 rounded-full flex items-center justify-center w-fit transition-colors group-hover:bg-[#11161C] group-hover:border-[#323A42]">
+            <Link to="#how-it-works" className="transition-opacity hover:opacity-80 group rounded-full">
+              <span className="bg-transparent text-[#F3F4F6] border border-[#232A32] font-medium text-[15px] px-6 py-3 rounded-full flex items-center justify-center w-fit transition-colors group-hover:bg-[#11161C] group-hover:border-[#323A42]">
                 View Pipeline
-              </button>
+              </span>
             </Link>
           </motion.div>
         </motion.div>
