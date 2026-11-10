@@ -36,6 +36,11 @@ CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "800"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "100"))
 EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "64"))
 CHROMA_BATCH_SIZE = int(os.getenv("CHROMA_BATCH_SIZE", "500"))
+# Clone limits: going over one deletes the clone and returns a 4xx.
+CLONE_TIMEOUT_S = float(os.getenv("CLONE_TIMEOUT_S", "60"))
+MAX_REPO_MB = float(os.getenv("MAX_REPO_MB", "100"))
+MAX_FILES = int(os.getenv("MAX_FILES", "5000"))
+MAX_REPOS = int(os.getenv("MAX_REPOS", "20"))
 
 # Server & CORS
 PORT = int(os.getenv("PORT", "8000"))

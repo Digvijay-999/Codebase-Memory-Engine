@@ -74,7 +74,8 @@ def scan_repository(repo_path: str):
     if not os.path.exists(repo_path):
         return files
 
-    for root, dirs, filenames in os.walk(repo_path):
+    repo_real = os.path.realpath(repo_path)
+    for root, dirs, filenames in os.walk(repo_path):  # followlinks=False: symlinked dirs are never entered
 
         # Skip unwanted directories in place
         dirs[:] = [d for d in dirs if d not in IGNORED_DIRS and not d.startswith(".")]
@@ -92,6 +93,10 @@ def scan_repository(repo_path: str):
             if extension in SUPPORTED_EXTENSIONS:
 
                 full_path = os.path.join(root, filename)
+
+                # Never read through a symlink or a path that resolves outside the repo (e.g. a link to /proc/self/environ).
+                if os.path.islink(full_path) or os.path.commonpath([repo_real, os.path.realpath(full_path)]) != repo_real:
+                    continue
 
                 try:
                     # Skip oversized files to protect memory and vector database limits

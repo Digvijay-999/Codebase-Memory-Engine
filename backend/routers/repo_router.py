@@ -177,7 +177,7 @@ def ask(request: AskRequest, response: Response):
     readme_path = os.path.join(repo_path, "README.md")
     
     sources = []
-    if os.path.exists(readme_path):
+    if os.path.isfile(readme_path) and not os.path.islink(readme_path):  # a symlinked README could point at secrets
         try:
             with open(readme_path, "r", encoding="utf-8", errors="ignore") as f:
                 readme_preview = f.read()[:2000]
