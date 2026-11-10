@@ -46,6 +46,15 @@ def _get_repo_path(repo_name: str) -> str:
     return repo_path
 
 
+def _require_indexed(results: dict, repo_name: str) -> None:
+    # An indexed repo always yields at least one chunk; none means it was never indexed (or doesn't exist).
+    if not results.get("documents"):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Repository '{repo_name}' isn't indexed. Index it from Overview first."
+        )
+
+
 @router.post("/clone")
 def clone_repo(request: RepoRequest):
     return clone_repository(request.repo_url)
@@ -137,6 +146,7 @@ def store_repo(repo_name: str):
 def search(request: SearchRequest, response: Response):
     t_start = time.perf_counter()
     results = search_chunks(request.query, request.repo_name)
+    _require_indexed(results, request.repo_name)
     total_time = time.perf_counter() - t_start
 
     logger.info(f"[PERF] op=search repo={request.repo_name} total_ms={total_time*1000:.1f} chunks_found={len(results.get('documents', []))}")
@@ -155,6 +165,7 @@ def ask(request: AskRequest, response: Response):
 
     t_search_start = time.perf_counter()
     results = search_chunks(request.question, repo_name_clean)
+    _require_indexed(results, repo_name_clean)
     t_search = time.perf_counter() - t_search_start
 
     # Combine chunk search results
