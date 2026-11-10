@@ -59,3 +59,6 @@ Thumbs.db
 
 # Local audit artifacts
 audit/
+
+# Local volume backups (tar of the named volumes)
+backups/
