@@ -17,5 +17,7 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    // `({ node, ...props })` drops react-markdown's node prop before spreading props onto DOM elements.
+    rules: { 'no-unused-vars': ['error', { ignoreRestSiblings: true }] },
   },
 ])

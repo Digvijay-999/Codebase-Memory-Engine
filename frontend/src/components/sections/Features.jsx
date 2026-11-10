@@ -1,4 +1,3 @@
-import React from 'react';
 import { Container, Section } from '../ui/Layout';
 import { motion } from 'framer-motion';
 import { Card } from '../ui/Card';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { AppSidebar } from '../components/layout/AppSidebar';
 import { AnimatedAIChat } from '../components/ui/AnimatedAiChat';
 

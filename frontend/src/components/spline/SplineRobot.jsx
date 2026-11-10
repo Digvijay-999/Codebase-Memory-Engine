@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState, useRef, useEffect } from 'react';
+import { Suspense, lazy, useState, useRef, useEffect } from 'react';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useInView } from 'framer-motion';
 

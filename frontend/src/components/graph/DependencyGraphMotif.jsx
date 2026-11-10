@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 // Random node generator
@@ -36,6 +35,7 @@ export function DependencyGraphMotif({ className, width = 800, height = 600 }) {
 
   React.useEffect(() => {
     const initialNodes = generateNodes(30, width, height);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- random layout made after mount and redone on resize; making it during render would be impure
     setNodes(initialNodes);
     setEdges(generateEdges(initialNodes, 150));
   }, [width, height]);

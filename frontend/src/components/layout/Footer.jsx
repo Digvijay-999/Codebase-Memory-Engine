@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Code2, Hash, Briefcase, Terminal } from 'lucide-react';
 import { Container } from '../ui/Layout';

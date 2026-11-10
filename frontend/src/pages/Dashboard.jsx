@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AppSidebar } from '../components/layout/AppSidebar';
 import { GitFork, CheckCircle2, Loader2, ArrowRight, RefreshCw, Plus, Circle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -25,7 +25,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (indexingStatus === 'loading') {
-      setCurrentStep(0);
       // Advance first two steps to simulate initial processing
       // Since backend doesn't stream progress, we hold at step 2 (Embeddings)
       const timer1 = setTimeout(() => setCurrentStep(1), 1500);
@@ -36,6 +35,7 @@ export default function Dashboard() {
 
   const handleIndexRepository = async () => {
     if (!repoUrl) return;
+    setCurrentStep(0);
     setIndexingStatus('loading');
     setProgressText('Indexing repository... This may take a few minutes.');
     

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Container } from '../ui/Layout';
 import { ScrollReveal } from '../ui/ScrollReveal';
 import { Code2, GitMerge, MessageSquare, Terminal } from 'lucide-react';

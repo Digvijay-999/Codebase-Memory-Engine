@@ -1,7 +1,5 @@
-import React from 'react';
 import { Container, Section } from '../ui/Layout';
 import { ContainerScroll } from '../ui/ContainerScroll';
-import { ScrollReveal } from '../ui/ScrollReveal';
 import { Folder, File, Terminal, Code2 } from 'lucide-react';
 import { MOCK_CHAT_EXCHANGE } from '../../lib/mockData';
 

@@ -1,6 +1,4 @@
-import React from 'react';
 import { Container, Section } from '../ui/Layout';
-import { Button } from '../ui/Button';
 import { NeonButton } from '../ui/NeonButton';
 import { ScrollReveal } from '../ui/ScrollReveal';
 import { Link } from 'react-router-dom';

@@ -1,7 +1,6 @@
-import React from 'react';
 import { cn } from '../../lib/utils';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { motion, useMotionTemplate, useMotionValue, useSpring } from 'framer-motion';
+import { motion, useMotionValue, useSpring } from 'framer-motion';
 
 export function MagneticButton({ children, className, onClick, ...props }) {
   const reducedMotion = useReducedMotion();

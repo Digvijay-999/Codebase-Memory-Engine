@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { Button } from '../ui/Button';
 
 const NAV_ITEMS = [
   { label: 'Product', path: '/#product', id: 'product' },

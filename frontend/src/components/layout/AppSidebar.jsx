@@ -1,11 +1,8 @@
-import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Home, 
   MessageSquare, 
   FileText, 
-  Network, 
-  GitBranch 
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 

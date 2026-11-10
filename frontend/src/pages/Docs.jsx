@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AppSidebar } from '../components/layout/AppSidebar';
 import { FileText, Download, Loader2, AlertCircle, RotateCw } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -77,6 +77,7 @@ export default function Docs() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount: the state set here is the cached report or the loading flag
     fetchDocs(false);
     return () => {
       if (activeControllerRef.current) {

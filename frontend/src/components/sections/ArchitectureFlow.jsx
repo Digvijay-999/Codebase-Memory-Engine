@@ -1,4 +1,3 @@
-import React from 'react';
 import { Container, Section } from '../ui/Layout';
 import { ScrollReveal, ScrollRevealChild } from '../ui/ScrollReveal';
 import { motion } from 'framer-motion';
@@ -49,7 +48,7 @@ export function ArchitectureFlow() {
           </div>
 
           <ScrollReveal stagger={true} className="relative z-10 flex flex-col lg:flex-row justify-between gap-12 lg:gap-4">
-            {FLOW_STEPS.map((step, idx) => (
+            {FLOW_STEPS.map((step) => (
               <ScrollRevealChild key={step.id} className="flex lg:flex-col items-start lg:items-center gap-6 lg:gap-8 flex-1 relative group">
                 
                 {/* Number Circle */}

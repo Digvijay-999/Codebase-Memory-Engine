@@ -1,4 +1,3 @@
-import React from 'react';
 import { Container, Section } from '../ui/Layout';
 import { ScrollReveal, ScrollRevealChild } from '../ui/ScrollReveal';
 import { motion } from 'framer-motion';

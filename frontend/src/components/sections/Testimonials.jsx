@@ -1,4 +1,3 @@
-import React from 'react';
 import { Container, Section } from '../ui/Layout';
 import { ScrollReveal } from '../ui/ScrollReveal';
 
