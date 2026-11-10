@@ -21,6 +21,10 @@ MODEL_DIR = Path(os.getenv("MODEL_DIR", str(BASE_DIR / "models" / "all-MiniLM-L6
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
 # Tried in order by OpenRouter if the primary errors (verified: a delisted primary falls through). Keep them :free.
 OPENROUTER_FALLBACK_MODELS = os.getenv("OPENROUTER_FALLBACK_MODELS", "cohere/north-mini-code:free,google/gemma-4-31b-it:free")
+# Model (and its own fallbacks) for whole-repo endpoints only (analyze/explain/readme), picked for speed:
+# the primary is too slow for long reports. Set OPENROUTER_MODEL_LONG= (empty) to use the primary instead.
+OPENROUTER_MODEL_LONG = os.getenv("OPENROUTER_MODEL_LONG", "cohere/north-mini-code:free")
+OPENROUTER_FALLBACK_MODELS_LONG = os.getenv("OPENROUTER_FALLBACK_MODELS_LONG", "nvidia/nemotron-3.5-lightning:free,nvidia/nemotron-3-ultra-550b-a55b:free")
 TOP_K_RESULTS = int(os.getenv("TOP_K_RESULTS", "5"))
 # Total limit for one LLM operation (attempts, retry, fallback). It can only shorten the per-endpoint caps
 # (60s /ask, 85s whole-repo), which stay below the UI timeouts in frontend/src/services/api.js.

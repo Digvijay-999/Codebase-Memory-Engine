@@ -16,7 +16,9 @@ import logging
 import anyio
 import httpx
 from typing import Optional, Dict, Any
-from config.settings import LLM_TOTAL_TIMEOUT_S, OPENROUTER_MODEL, OPENROUTER_FALLBACK_MODELS
+from config.settings import (
+    LLM_TOTAL_TIMEOUT_S, OPENROUTER_MODEL, OPENROUTER_FALLBACK_MODELS, OPENROUTER_MODEL_LONG, OPENROUTER_FALLBACK_MODELS_LONG
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +75,7 @@ def get_openai_client() -> openai.AsyncOpenAI:
         _client_api_key = api_key
     return _client
 
-def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
+def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0, whole_repo: bool = False) -> str:
     # One total deadline over every attempt, backoff sleep and OpenRouter fallback. Endpoints are sync and run in
     # AnyIO worker threads, so the call runs on the app's event loop; hitting the deadline cancels it and closes the
     # upstream connection. LLM_TOTAL_TIMEOUT_S can only shorten the per-endpoint caps (60s ask, 85s whole-repo).
@@ -82,7 +84,7 @@ def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
 
     async def _with_deadline() -> str:
         with anyio.fail_after(deadline):
-            return await _call_openrouter(prompt, timeout)
+            return await _call_openrouter(prompt, timeout, whole_repo)
 
     try:
         return anyio.from_thread.run(_with_deadline)
@@ -91,13 +93,22 @@ def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
         raise OpenRouterTimeoutException(f"The AI model didn't finish within {deadline:.0f}s, so the request was stopped. Please try again.")
 
 
-async def _call_openrouter(prompt: str, timeout: float) -> str:
+async def _call_openrouter(prompt: str, timeout: float, whole_repo: bool = False) -> str:
     global _last_llm_metrics
     client = get_openai_client()
     model_name = os.getenv("OPENROUTER_MODEL", OPENROUTER_MODEL)
+    fallback_csv = os.getenv("OPENROUTER_FALLBACK_MODELS", OPENROUTER_FALLBACK_MODELS)
+    long_model = os.getenv("OPENROUTER_MODEL_LONG", OPENROUTER_MODEL_LONG)
+    if whole_repo and long_model:
+        model_name = long_model
+        fallback_csv = os.getenv("OPENROUTER_FALLBACK_MODELS_LONG", OPENROUTER_FALLBACK_MODELS_LONG)
     # Optional OpenRouter fallback list (tried in order if the primary errors); keep it to :free ids to stay unbilled.
-    fallbacks = [m.strip() for m in os.getenv("OPENROUTER_FALLBACK_MODELS", OPENROUTER_FALLBACK_MODELS).split(",") if m.strip()]
-    extra = {"extra_body": {"models": [model_name, *fallbacks]}} if fallbacks else {}
+    fallbacks = [m.strip() for m in fallback_csv.split(",") if m.strip()]
+    # Long whole-repo reports turn reasoning off (the primary reasons at "high" effort by default); /ask keeps model defaults.
+    body = {"reasoning": {"effort": "none"}} if whole_repo else {}
+    if fallbacks:
+        body["models"] = [model_name, *fallbacks]
+    extra = {"extra_body": body} if body else {}
     max_retries = 1
     backoff_times = [2.0]
 
@@ -118,7 +129,9 @@ async def _call_openrouter(prompt: str, timeout: float) -> str:
                 "output_chars": len(content),
                 "model": model_name
             }
-            logger.info(f"[PERF] OpenRouter completed: model={getattr(response, 'model', None) or model_name} prompt_chars={len(prompt)} output_chars={len(content)} elapsed={elapsed:.2f}s")
+            usage = response.usage
+            reasoning_tokens = getattr(getattr(usage, "completion_tokens_details", None), "reasoning_tokens", None)
+            logger.info(f"[PERF] OpenRouter completed: id={response.id} model={getattr(response, 'model', None) or model_name} prompt_tokens={getattr(usage, 'prompt_tokens', None)} completion_tokens={getattr(usage, 'completion_tokens', None)} reasoning_tokens={reasoning_tokens} finish={response.choices[0].finish_reason} prompt_chars={len(prompt)} output_chars={len(content)} elapsed={elapsed:.2f}s")
             return content
         except openai.APITimeoutError as e:
             elapsed = time.perf_counter() - start_time
@@ -191,7 +204,7 @@ Task:
 Answer ONLY using the provided repository context. Do not invent findings.
 If evidence is insufficient even after reading the repository, clearly explain why.
 """
-    return call_openrouter_with_backoff(full_prompt, timeout=85.0)
+    return call_openrouter_with_backoff(full_prompt, timeout=85.0, whole_repo=True)
 
 
 def explain_repository(context: str, metadata_json: str = None):
@@ -316,7 +329,7 @@ Repository Context:
 {context}
 """
 
-    return call_openrouter_with_backoff(prompt, timeout=85.0)
+    return call_openrouter_with_backoff(prompt, timeout=85.0, whole_repo=True)
 
 
 def _normalize_readme_output(content: str, repo_url: str = "") -> str:
@@ -400,5 +413,5 @@ Repository Context:
 {context}
 """
 
-    raw_readme = call_openrouter_with_backoff(prompt, timeout=85.0)
+    raw_readme = call_openrouter_with_backoff(prompt, timeout=85.0, whole_repo=True)
     return _normalize_readme_output(raw_readme, repo_url=repo_url)
