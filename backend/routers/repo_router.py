@@ -16,7 +16,7 @@ from services.file_service import scan_repository
 from services.content_service import read_repository, get_repository_context
 from services.chunk_service import chunk_documents
 from services.embedding_service import create_embedding, store_chunks, search_chunks
-from services.llm_service import ask_llm, analyze_repository, explain_repository, generate_readme, get_last_llm_metrics
+from services.llm_service import ask_llm, analyze_repository, explain_repository, generate_readme
 from git import Repo
 from config.settings import REPOS_DIR
 

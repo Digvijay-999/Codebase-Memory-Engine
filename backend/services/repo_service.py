@@ -1,9 +1,13 @@
 import os
+import shutil
+import logging
 from pathlib import Path
 from git import Repo
 from git.exc import GitCommandError
 from fastapi import HTTPException
 from config.settings import REPOS_DIR
+
+logger = logging.getLogger(__name__)
 
 
 def clone_repository(repo_url: str):
@@ -29,9 +33,13 @@ def clone_repository(repo_url: str):
     try:
         Repo.clone_from(clean_url, destination, depth=1) # Shallow clone for speed and memory efficiency
     except GitCommandError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid GitHub repository URL or repository could not be cloned: {str(e)}")
+        logger.warning("Clone failed for %s: %s", clean_url, e)
+        shutil.rmtree(destination, ignore_errors=True)  # a partial folder would be reused later without re-cloning
+        raise HTTPException(status_code=400, detail="Couldn't clone this repository. Check that it's a public GitHub URL and try again.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to clone repository: {str(e)}")
+        logger.error("Clone failed for %s: %r", clean_url, e)
+        shutil.rmtree(destination, ignore_errors=True)
+        raise HTTPException(status_code=500, detail="Failed to clone repository.")
 
     return {
         "message": "Repository cloned successfully",

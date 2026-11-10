@@ -1,4 +1,5 @@
 import os
+import logging
 import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -15,6 +16,12 @@ from services.llm_service import (
 )
 from services.embedding_service import warmup_model, collection
 from config.settings import ALLOWED_ORIGINS, HOST, PORT
+
+# Root handler stays at WARNING (quiet third-party libs); only our packages log INFO ([PERF] lines).
+# Uvicorn's loggers don't propagate to root, so its lines are not duplicated.
+logging.basicConfig(format="%(levelname)s:     %(name)s - %(message)s")
+for _name in ("routers", "services"):
+    logging.getLogger(_name).setLevel(logging.INFO)
 
 
 @asynccontextmanager
