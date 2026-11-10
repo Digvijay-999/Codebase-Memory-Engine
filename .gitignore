@@ -28,6 +28,7 @@ frontend/.env.production
 *.env
 **/.env
 **/.env.*
+!**/.env.example
 
 # ChromaDB & Database Files
 chroma_db/
@@ -55,3 +56,6 @@ Thumbs.db
 .gemini/
 .agents/
 .system_generated/
+
+# Local audit artifacts
+audit/
