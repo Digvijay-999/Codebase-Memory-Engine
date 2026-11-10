@@ -13,12 +13,14 @@ else:
 
 import time
 import logging
+import anyio
 import httpx
 from typing import Optional, Dict, Any
+from config.settings import LLM_TOTAL_TIMEOUT_S
 
 logger = logging.getLogger(__name__)
 
-_client: Optional[openai.OpenAI] = None
+_client: Optional[openai.AsyncOpenAI] = None
 _client_api_key: Optional[str] = None
 _last_llm_metrics: Dict[str, Any] = {"elapsed_s": 0.0, "prompt_chars": 0, "output_chars": 0}
 
@@ -40,30 +42,29 @@ class OpenRouterConfigException(Exception):
 def get_last_llm_metrics() -> Dict[str, Any]:
     return dict(_last_llm_metrics)
 
-def close_openai_client() -> None:
+async def close_openai_client() -> None:
     global _client, _client_api_key
     if _client is not None:
         try:
-            if hasattr(_client, "_client") and hasattr(_client._client, "close"):
-                _client._client.close()
+            await _client.close()
         except Exception as e:
             logger.warning(f"Error closing persistent OpenAI client: {e}")
         finally:
             _client = None
             _client_api_key = None
 
-def get_openai_client() -> openai.OpenAI:
+def get_openai_client() -> openai.AsyncOpenAI:
     global _client, _client_api_key
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise OpenRouterConfigException("OPENROUTER_API_KEY is missing. Please configure it in your environment.", 401)
 
     if _client is None or _client_api_key != api_key:
-        http_client = httpx.Client(
+        http_client = httpx.AsyncClient(
             timeout=httpx.Timeout(connect=10.0, read=95.0, write=10.0, pool=10.0),
             limits=httpx.Limits(max_keepalive_connections=10, max_connections=20, keepalive_expiry=60.0),
         )
-        _client = openai.OpenAI(
+        _client = openai.AsyncOpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=api_key,
             http_client=http_client,
@@ -73,6 +74,24 @@ def get_openai_client() -> openai.OpenAI:
     return _client
 
 def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
+    # One total deadline over every attempt, backoff sleep and OpenRouter fallback. Endpoints are sync and run in
+    # AnyIO worker threads, so the call runs on the app's event loop; hitting the deadline cancels it and closes the
+    # upstream connection. LLM_TOTAL_TIMEOUT_S can only shorten the per-endpoint caps (60s ask, 85s whole-repo).
+    deadline = min(timeout, LLM_TOTAL_TIMEOUT_S)
+    start_time = time.perf_counter()
+
+    async def _with_deadline() -> str:
+        with anyio.fail_after(deadline):
+            return await _call_openrouter(prompt, timeout)
+
+    try:
+        return anyio.from_thread.run(_with_deadline)
+    except TimeoutError:
+        logger.error(f"[PERF] OpenRouter total deadline hit after {time.perf_counter() - start_time:.2f}s (deadline={deadline:.0f}s); upstream request cancelled")
+        raise OpenRouterTimeoutException(f"The AI model didn't finish within {deadline:.0f}s, so the request was stopped. Please try again.")
+
+
+async def _call_openrouter(prompt: str, timeout: float) -> str:
     global _last_llm_metrics
     client = get_openai_client()
     model_name = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
@@ -85,7 +104,7 @@ def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
     start_time = time.perf_counter()
     for attempt in range(max_retries + 1):
         try:
-            response = client.chat.completions.create(
+            response = await client.chat.completions.create(
                 model=model_name,
                 messages=[{"role": "user", "content": prompt}],
                 timeout=timeout,
@@ -110,7 +129,7 @@ def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
             if attempt < max_retries and elapsed < 15.0:
                 sleep_time = backoff_times[attempt]
                 logger.warning(f"OpenRouter transient rate limit: {str(e)}. Retrying in {sleep_time}s... (Attempt {attempt + 1}/{max_retries})")
-                time.sleep(sleep_time)
+                await anyio.sleep(sleep_time)
             else:
                 logger.error("OpenRouter API error (RateLimitError): Max retries exceeded.")
                 raise OpenRouterRateLimitException("The AI model is currently busy or rate-limited. Please try again in a few moments.")
@@ -119,7 +138,7 @@ def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
             if attempt < max_retries and elapsed < 15.0:
                 sleep_time = backoff_times[attempt]
                 logger.warning(f"OpenRouter transient 5xx: {str(e)}. Retrying in {sleep_time}s... (Attempt {attempt + 1}/{max_retries})")
-                time.sleep(sleep_time)
+                await anyio.sleep(sleep_time)
             else:
                 logger.error("OpenRouter API error (InternalServerError): Max retries exceeded.")
                 raise OpenRouterRetryException("The AI model provider is currently experiencing issues. Please try again.")
@@ -127,7 +146,7 @@ def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
             elapsed = time.perf_counter() - start_time
             if attempt < max_retries and elapsed < 15.0:
                 logger.warning(f"OpenRouter connection error: {e}. Retrying in 1s...")
-                time.sleep(1.0)
+                await anyio.sleep(1.0)
             else:
                 raise OpenRouterRetryException("Unable to connect to OpenRouter. Please check network connectivity.")
         except openai.AuthenticationError:

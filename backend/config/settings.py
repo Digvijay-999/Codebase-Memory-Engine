@@ -20,6 +20,9 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 MODEL_DIR = Path(os.getenv("MODEL_DIR", str(BASE_DIR / "models" / "all-MiniLM-L6-v2")))
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
 TOP_K_RESULTS = int(os.getenv("TOP_K_RESULTS", "5"))
+# Total limit for one LLM operation (attempts, retry, fallback). It can only shorten the per-endpoint caps
+# (60s /ask, 85s whole-repo), which stay below the UI timeouts in frontend/src/services/api.js.
+LLM_TOTAL_TIMEOUT_S = float(os.getenv("LLM_TOTAL_TIMEOUT_S", "85"))
 
 # Indexing & File limits
 MAX_FILE_SIZE_BYTES = int(os.getenv("MAX_FILE_SIZE_BYTES", str(500 * 1024))) # 500 KB limit

@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown logic: cleanly close persistent HTTP connection pool
     try:
-        close_openai_client()
+        await close_openai_client()
     except Exception as e:
         print(f"Warning during client shutdown: {e}")
 
