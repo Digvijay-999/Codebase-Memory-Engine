@@ -1,0 +1,4 @@
+#!/bin/sh
+# Sourced by the nginx entrypoint before it renders templates: the CSP's connect-src gets the origin
+# (scheme://host[:port]) of a VITE_API_URL override, or nothing when the API is same-origin at /api.
+export API_ORIGIN="$(printf '%s' "${VITE_API_URL:-}" | sed -nE 's#^(https?://[^/]+).*#\1#p')"
