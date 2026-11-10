@@ -95,7 +95,7 @@ export function Navbar() {
             </Link>
 
             {/* Desktop Links */}
-            <div className="hidden md:flex items-center h-full gap-2 relative">
+            <div className="hidden lg:flex items-center h-full gap-2 relative">
               {NAV_ITEMS.map((item, index) => {
                 const isPathMatch = currentPath === item.path;
                 const isActive = activeSection === item.id || isPathMatch;
@@ -164,14 +164,14 @@ export function Navbar() {
 
             {/* CTA & Mobile Toggle */}
             <div className="flex items-center gap-4">
-              <Link to="/dashboard" className="hidden md:block rounded-full">
+              <Link to="/dashboard" className="hidden lg:block rounded-full">
                 <span className="inline-block bg-white text-[#080B10] hover:bg-[#F3F4F6] transition-colors font-medium text-[15px] px-5 py-2 rounded-full border-none outline-none">
                   Launch Workspace
                 </span>
               </Link>
               
               <button 
-                className="md:hidden text-[#7B838C] hover:text-[#F3F4F6] transition-colors pointer-events-auto p-2"
+                className="lg:hidden text-[#7B838C] hover:text-[#F3F4F6] transition-colors pointer-events-auto p-2"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 aria-label="Toggle mobile menu"
               >
@@ -189,7 +189,7 @@ export function Navbar() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.2 }}
-              className="absolute top-[80px] left-4 right-4 p-4 bg-[#11161C]/95 backdrop-blur-xl border border-[#232A32] rounded-2xl shadow-xl md:hidden flex flex-col gap-4 pointer-events-auto"
+              className="absolute top-[80px] left-4 right-4 p-4 bg-[#11161C]/95 backdrop-blur-xl border border-[#232A32] rounded-2xl shadow-xl lg:hidden flex flex-col gap-4 pointer-events-auto"
             >
               {NAV_ITEMS.map((item) => {
                 const isPathMatch = currentPath === item.path;
