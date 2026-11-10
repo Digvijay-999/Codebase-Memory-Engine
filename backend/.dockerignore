@@ -20,3 +20,4 @@ htmlcov/
 .vscode
 .idea
 *.onnx
+**/*.onnx

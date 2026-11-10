@@ -13,10 +13,22 @@ else:
 
 import time
 import logging
+import httpx
+from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
+_client: Optional[openai.OpenAI] = None
+_client_api_key: Optional[str] = None
+_last_llm_metrics: Dict[str, Any] = {"elapsed_s": 0.0, "prompt_chars": 0, "output_chars": 0}
+
 class OpenRouterRetryException(Exception):
+    pass
+
+class OpenRouterTimeoutException(OpenRouterRetryException):
+    pass
+
+class OpenRouterRateLimitException(OpenRouterRetryException):
     pass
 
 class OpenRouterConfigException(Exception):
@@ -25,21 +37,49 @@ class OpenRouterConfigException(Exception):
         self.status_code = status_code
         super().__init__(self.message)
 
-def get_openai_client():
+def get_last_llm_metrics() -> Dict[str, Any]:
+    return dict(_last_llm_metrics)
+
+def close_openai_client() -> None:
+    global _client, _client_api_key
+    if _client is not None:
+        try:
+            if hasattr(_client, "_client") and hasattr(_client._client, "close"):
+                _client._client.close()
+        except Exception as e:
+            logger.warning(f"Error closing persistent OpenAI client: {e}")
+        finally:
+            _client = None
+            _client_api_key = None
+
+def get_openai_client() -> openai.OpenAI:
+    global _client, _client_api_key
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise OpenRouterConfigException("OPENROUTER_API_KEY is missing. Please configure it in your environment.", 401)
-    return openai.OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,
-    )
 
-def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0):
+    if _client is None or _client_api_key != api_key:
+        http_client = httpx.Client(
+            timeout=httpx.Timeout(connect=10.0, read=95.0, write=10.0, pool=10.0),
+            limits=httpx.Limits(max_keepalive_connections=10, max_connections=20, keepalive_expiry=60.0),
+        )
+        _client = openai.OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key,
+            http_client=http_client,
+            max_retries=0,
+        )
+        _client_api_key = api_key
+    return _client
+
+def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
+    global _last_llm_metrics
     client = get_openai_client()
     model_name = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
-    max_retries = 3
-    backoff_times = [1, 2, 4]
-    
+    max_retries = 1
+    backoff_times = [2.0]
+
+    start_time = time.perf_counter()
     for attempt in range(max_retries + 1):
         try:
             response = client.chat.completions.create(
@@ -47,19 +87,49 @@ def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0):
                 messages=[{"role": "user", "content": prompt}],
                 timeout=timeout
             )
-            return response.choices[0].message.content
-        except (openai.RateLimitError, openai.APITimeoutError, openai.APIConnectionError, openai.InternalServerError) as e:
-            if attempt < max_retries:
+            elapsed = time.perf_counter() - start_time
+            content = response.choices[0].message.content or ""
+            _last_llm_metrics = {
+                "elapsed_s": elapsed,
+                "prompt_chars": len(prompt),
+                "output_chars": len(content),
+                "model": model_name
+            }
+            logger.info(f"[PERF] OpenRouter completed: model={model_name} prompt_chars={len(prompt)} output_chars={len(content)} elapsed={elapsed:.2f}s")
+            return content
+        except openai.APITimeoutError as e:
+            elapsed = time.perf_counter() - start_time
+            logger.error(f"[PERF] OpenRouter API timeout after {elapsed:.2f}s (timeout={timeout}s): {e}")
+            raise OpenRouterTimeoutException(f"The AI model request timed out after {timeout:.0f}s waiting for OpenRouter. Please try again.")
+        except openai.RateLimitError as e:
+            elapsed = time.perf_counter() - start_time
+            if attempt < max_retries and elapsed < 15.0:
                 sleep_time = backoff_times[attempt]
-                logger.warning(f"OpenRouter API error ({type(e).__name__}): {str(e)}. Retrying in {sleep_time} seconds... (Attempt {attempt + 1}/{max_retries})")
+                logger.warning(f"OpenRouter transient rate limit: {str(e)}. Retrying in {sleep_time}s... (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(sleep_time)
             else:
-                logger.error(f"OpenRouter API error ({type(e).__name__}): Max retries exceeded.")
-                raise OpenRouterRetryException("The AI model is currently busy. Please try again in a few moments.")
+                logger.error("OpenRouter API error (RateLimitError): Max retries exceeded.")
+                raise OpenRouterRateLimitException("The AI model is currently busy or rate-limited. Please try again in a few moments.")
+        except openai.InternalServerError as e:
+            elapsed = time.perf_counter() - start_time
+            if attempt < max_retries and elapsed < 15.0:
+                sleep_time = backoff_times[attempt]
+                logger.warning(f"OpenRouter transient 5xx: {str(e)}. Retrying in {sleep_time}s... (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(sleep_time)
+            else:
+                logger.error("OpenRouter API error (InternalServerError): Max retries exceeded.")
+                raise OpenRouterRetryException("The AI model provider is currently experiencing issues. Please try again.")
+        except openai.APIConnectionError as e:
+            elapsed = time.perf_counter() - start_time
+            if attempt < max_retries and elapsed < 15.0:
+                logger.warning(f"OpenRouter connection error: {e}. Retrying in 1s...")
+                time.sleep(1.0)
+            else:
+                raise OpenRouterRetryException("Unable to connect to OpenRouter. Please check network connectivity.")
         except openai.AuthenticationError:
             raise OpenRouterConfigException("OpenRouter API Key is missing or invalid.", 401)
         except openai.NotFoundError:
-            raise OpenRouterConfigException("The specified OpenRouter model is unavailable.", 404)
+            raise OpenRouterConfigException(f"The specified OpenRouter model '{model_name}' is unavailable.", 404)
         except Exception as e:
             raise OpenRouterConfigException(f"An unexpected error occurred: {str(e)}", 500)
 
@@ -98,7 +168,7 @@ Task:
 Answer ONLY using the provided repository context. Do not invent findings.
 If evidence is insufficient even after reading the repository, clearly explain why.
 """
-    return call_openrouter_with_backoff(full_prompt, timeout=120.0)
+    return call_openrouter_with_backoff(full_prompt, timeout=85.0)
 
 
 def explain_repository(context: str, metadata_json: str = None):
@@ -223,7 +293,7 @@ Repository Context:
 {context}
 """
 
-    return call_openrouter_with_backoff(prompt, timeout=120.0)
+    return call_openrouter_with_backoff(prompt, timeout=85.0)
 
 
 def _normalize_readme_output(content: str, repo_url: str = "") -> str:
@@ -307,5 +377,5 @@ Repository Context:
 {context}
 """
 
-    raw_readme = call_openrouter_with_backoff(prompt, timeout=120.0)
+    raw_readme = call_openrouter_with_backoff(prompt, timeout=85.0)
     return _normalize_readme_output(raw_readme, repo_url=repo_url)

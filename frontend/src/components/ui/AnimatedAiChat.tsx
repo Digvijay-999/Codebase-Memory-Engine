@@ -22,7 +22,9 @@ import {
     Link as LinkIcon,
     Trash2,
     Activity,
-    ShieldAlert
+    ShieldAlert,
+    RotateCw,
+    Square
 } from "lucide-react";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import * as React from "react"
@@ -181,6 +183,23 @@ export function AnimatedAIChat() {
         }
     }, [activeRepo, repoUrl]);
 
+    const chatAbortControllerRef = useRef<AbortController | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (chatAbortControllerRef.current) {
+                chatAbortControllerRef.current.abort();
+            }
+        };
+    }, []);
+
+    const handleCancelRequest = () => {
+        if (chatAbortControllerRef.current) {
+            chatAbortControllerRef.current.abort();
+            chatAbortControllerRef.current = null;
+        }
+    };
+
     const { textareaRef, adjustHeight } = useAutoResizeTextarea({
         minHeight: 60,
         maxHeight: 200,
@@ -280,7 +299,7 @@ export function AnimatedAIChat() {
             }
         } else if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            if (value.trim()) {
+            if (value.trim() && !isTyping) {
                 handleSendMessage();
             }
         }
@@ -302,6 +321,8 @@ export function AnimatedAIChat() {
     ]);
 
     const handleActionSubmit = async (prompt: string, label: string) => {
+        if (isTyping) return;
+
         setValue("");
         const userMsg = {
             id: Date.now().toString(),
@@ -314,12 +335,15 @@ export function AnimatedAIChat() {
         adjustHeight(true);
         setIsTyping(true);
 
+        const controller = new AbortController();
+        chatAbortControllerRef.current = controller;
+
         try {
             let data;
             if (categoryBPrompts.has(label)) {
-                data = await api.analyzeRepo(prompt, activeRepo);
+                data = await api.analyzeRepo(prompt, activeRepo, { signal: controller.signal });
             } else {
-                data = await api.askQuestion(prompt, activeRepo);
+                data = await api.askQuestion(prompt, activeRepo, { signal: controller.signal });
             }
             const assistantMsg = {
                 id: (Date.now() + 1).toString(),
@@ -329,24 +353,39 @@ export function AnimatedAIChat() {
             };
             setMessages(prev => [...prev, assistantMsg]);
         } catch (error: any) {
+            if (error.message === 'Request was cancelled.') {
+                const cancelMsg = {
+                    id: (Date.now() + 1).toString(),
+                    role: "assistant",
+                    content: `*Request was cancelled.*`,
+                    sources: []
+                };
+                setMessages(prev => [...prev, cancelMsg]);
+                return;
+            }
             console.error(error);
             const errorMsg = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
+                isError: true,
+                retryQuery: prompt,
                 content: `⚠ **Unable to generate a response.**\n\n${error.message || 'Something went wrong while contacting the backend.'}`,
                 sources: []
             };
             setMessages(prev => [...prev, errorMsg]);
         } finally {
+            if (chatAbortControllerRef.current === controller) {
+                chatAbortControllerRef.current = null;
+            }
             setIsTyping(false);
             textareaRef.current?.focus();
         }
     };
 
-    const handleSendMessage = async () => {
-        if (!value.trim()) return;
+    const handleSendMessage = async (queryOverride?: string) => {
+        const currentQuery = (queryOverride !== undefined ? queryOverride : value).trim();
+        if (!currentQuery || isTyping) return;
 
-        const currentQuery = value;
         const userMsg = {
             id: Date.now().toString(),
             role: "user",
@@ -354,16 +393,23 @@ export function AnimatedAIChat() {
             timestamp: Date.now()
         };
 
-        setMessages(prev => [...prev, userMsg]);
-        setValue("");
-        adjustHeight(true);
+        if (!queryOverride) {
+            setMessages(prev => [...prev, userMsg]);
+            setValue("");
+            adjustHeight(true);
+        } else {
+            setMessages(prev => [...prev, { ...userMsg, id: Date.now().toString() }]);
+        }
         setIsTyping(true);
+
+        const controller = new AbortController();
+        chatAbortControllerRef.current = controller;
 
         try {
             let data;
             if (currentQuery.startsWith('/docs')) {
                 const repoName = currentQuery.replace('/docs', '').trim() || activeRepo;
-                data = await api.generateReadme(repoName);
+                data = await api.generateReadme(repoName, { signal: controller.signal });
                 const targetRepoUrl = data.repo_url || repoUrl;
                 if (data.repo_url) {
                     setRepoUrl(data.repo_url);
@@ -379,7 +425,7 @@ export function AnimatedAIChat() {
                 setMessages(prev => [...prev, assistantMsg]);
             } else if (currentQuery.startsWith('/architecture')) {
                 const repoName = currentQuery.replace('/architecture', '').trim() || activeRepo;
-                data = await api.explainRepo(repoName);
+                data = await api.explainRepo(repoName, { signal: controller.signal });
                 const assistantMsg = {
                     id: (Date.now() + 1).toString(),
                     role: "assistant",
@@ -393,7 +439,7 @@ export function AnimatedAIChat() {
                     const queryText = currentQuery.replace('/explain', '').trim();
                     actualQuery = queryText ? `Explain the module: ${queryText}` : "Explain the modules in this repository.";
                 }
-                data = await api.askQuestion(actualQuery, activeRepo);
+                data = await api.askQuestion(actualQuery, activeRepo, { signal: controller.signal });
                 const assistantMsg = {
                     id: (Date.now() + 1).toString(),
                     role: "assistant",
@@ -403,15 +449,30 @@ export function AnimatedAIChat() {
                 setMessages(prev => [...prev, assistantMsg]);
             }
         } catch (error: any) {
+            if (error.message === 'Request was cancelled.') {
+                const cancelMsg = {
+                    id: (Date.now() + 1).toString(),
+                    role: "assistant",
+                    content: `*Request was cancelled.*`,
+                    sources: []
+                };
+                setMessages(prev => [...prev, cancelMsg]);
+                return;
+            }
             console.error(error);
             const errorMsg = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
+                isError: true,
+                retryQuery: currentQuery,
                 content: `⚠ **Unable to generate a response.**\n\n${error.message || 'Something went wrong while contacting the backend.'}`,
                 sources: []
             };
             setMessages(prev => [...prev, errorMsg]);
         } finally {
+            if (chatAbortControllerRef.current === controller) {
+                chatAbortControllerRef.current = null;
+            }
             setIsTyping(false);
             textareaRef.current?.focus();
         }
@@ -579,6 +640,21 @@ export function AnimatedAIChat() {
                                             </div>
                                         </div>
                                     )}
+
+                                    {msg.isError && msg.retryQuery && (
+                                        <div className="mt-4 pt-3 border-t border-[#232A32] flex items-center justify-between">
+                                            <span className="text-xs text-[#8B939E]">Generation encountered an issue</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSendMessage(msg.retryQuery)}
+                                                disabled={isTyping}
+                                                className="px-3 py-1 text-xs rounded-md border border-[#232A32] bg-[#1A2129] hover:bg-[#232A32] text-[#F3F4F6] transition-colors flex items-center gap-1.5"
+                                            >
+                                                <RotateCw className="w-3.5 h-3.5" />
+                                                <span>Retry</span>
+                                            </button>
+                                        </div>
+                                    )}
                                 </motion.div>
                             ))}
                             {isTyping && <SkeletonMessage key="skeleton" />}
@@ -675,7 +751,19 @@ export function AnimatedAIChat() {
                                     </div>
                                 )}
 
-                                <div className="absolute bottom-4 right-4 z-10">
+                                <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2">
+                                    {isTyping && (
+                                        <motion.button
+                                            type="button"
+                                            onClick={handleCancelRequest}
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            className="px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all flex items-center gap-1.5"
+                                        >
+                                            <Square className="w-3 h-3 fill-current" />
+                                            <span>Stop</span>
+                                        </motion.button>
+                                    )}
                                     <motion.button
                                         type="button"
                                         onClick={handleSendMessage}

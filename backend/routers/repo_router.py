@@ -1,7 +1,9 @@
 import os
 import json
+import time
+import logging
 from collections import Counter
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
 from schemas.repo_schema import RepoRequest
 from schemas.embedding_schema import EmbeddingRequest
@@ -14,10 +16,11 @@ from services.file_service import scan_repository
 from services.content_service import read_repository, get_repository_context
 from services.chunk_service import chunk_documents
 from services.embedding_service import create_embedding, store_chunks, search_chunks
-from services.llm_service import ask_llm, analyze_repository, explain_repository, generate_readme
+from services.llm_service import ask_llm, analyze_repository, explain_repository, generate_readme, get_last_llm_metrics
 from git import Repo
 from config.settings import REPOS_DIR
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -131,8 +134,13 @@ def store_repo(repo_name: str):
 
 
 @router.post("/search")
-def search(request: SearchRequest):
+def search(request: SearchRequest, response: Response):
+    t_start = time.perf_counter()
     results = search_chunks(request.query, request.repo_name)
+    total_time = time.perf_counter() - t_start
+
+    logger.info(f"[PERF] op=search repo={request.repo_name} total_ms={total_time*1000:.1f} chunks_found={len(results.get('documents', []))}")
+    response.headers["Server-Timing"] = f"total;dur={total_time*1000:.1f}"
 
     return {
         "success": True,
@@ -141,9 +149,13 @@ def search(request: SearchRequest):
 
 
 @router.post("/ask")
-def ask(request: AskRequest):
+def ask(request: AskRequest, response: Response):
+    t_start = time.perf_counter()
     repo_name_clean = request.repo_name
+
+    t_search_start = time.perf_counter()
     results = search_chunks(request.question, repo_name_clean)
+    t_search = time.perf_counter() - t_search_start
 
     # Combine chunk search results
     context_chunks = results.get("documents", [])
@@ -168,9 +180,23 @@ def ask(request: AskRequest):
         if file and file not in sources:
             sources.append(file)
 
+    t_llm_start = time.perf_counter()
     answer = ask_llm(
         request.question,
         context
+    )
+    t_llm = time.perf_counter() - t_llm_start
+    total_time = time.perf_counter() - t_start
+
+    logger.info(
+        f"[PERF] op=ask repo={repo_name_clean} total_ms={total_time*1000:.1f} "
+        f"search_ms={t_search*1000:.1f} llm_ms={t_llm*1000:.1f} "
+        f"chunks={len(context_chunks)} prompt_chars={len(context)} ans_chars={len(answer)}"
+    )
+    response.headers["Server-Timing"] = (
+        f"total;dur={total_time*1000:.1f}, "
+        f"search;dur={t_search*1000:.1f}, "
+        f"llm;dur={t_llm*1000:.1f}"
     )
 
     return {
@@ -181,14 +207,21 @@ def ask(request: AskRequest):
 
 
 @router.post("/analyze")
-def analyze_repo(request: AskRequest):
+def analyze_repo(request: AskRequest, response: Response):
+    t_start = time.perf_counter()
     repo_path = _get_repo_path(request.repo_name)
 
     files = scan_repository(repo_path)
     docs = read_repository(repo_path, files)
     context = get_repository_context(docs)
 
+    t_llm_start = time.perf_counter()
     answer = analyze_repository(request.question, context)
+    t_llm = time.perf_counter() - t_llm_start
+    total_time = time.perf_counter() - t_start
+
+    logger.info(f"[PERF] op=analyze repo={request.repo_name} total_ms={total_time*1000:.1f} llm_ms={t_llm*1000:.1f}")
+    response.headers["Server-Timing"] = f"total;dur={total_time*1000:.1f}, llm;dur={t_llm*1000:.1f}"
 
     return {
         "success": True,
@@ -198,10 +231,12 @@ def analyze_repo(request: AskRequest):
 
 
 @router.post("/explain")
-def explain(request: RepoNameRequest):
+def explain(request: RepoNameRequest, response: Response):
+    t_start = time.perf_counter()
     repo_path = _get_repo_path(request.repo_name)
     repo_url = _get_repo_origin_url(repo_path)
 
+    t_prep_start = time.perf_counter()
     files = scan_repository(repo_path)
     docs = read_repository(repo_path, files)
     total_files = len(files)
@@ -263,7 +298,23 @@ def explain(request: RepoNameRequest):
 
     metadata_json = json.dumps(structured_metadata, indent=2)
     context = get_repository_context(docs)
+    t_prep = time.perf_counter() - t_prep_start
+
+    t_llm_start = time.perf_counter()
     explanation = explain_repository(context, metadata_json)
+    t_llm = time.perf_counter() - t_llm_start
+    total_time = time.perf_counter() - t_start
+
+    logger.info(
+        f"[PERF] op=explain repo={request.repo_name} total_ms={total_time*1000:.1f} "
+        f"prep_ms={t_prep*1000:.1f} llm_ms={t_llm*1000:.1f} "
+        f"files={total_files} context_chars={len(context)}"
+    )
+    response.headers["Server-Timing"] = (
+        f"total;dur={total_time*1000:.1f}, "
+        f"prep;dur={t_prep*1000:.1f}, "
+        f"llm;dur={t_llm*1000:.1f}"
+    )
 
     return {
         "success": True,
@@ -274,15 +325,32 @@ def explain(request: RepoNameRequest):
 
 
 @router.post("/generate-readme")
-def generate_repo_readme(request: RepoNameRequest):
+def generate_repo_readme(request: RepoNameRequest, response: Response):
+    t_start = time.perf_counter()
     repo_path = _get_repo_path(request.repo_name)
     repo_url = _get_repo_origin_url(repo_path)
 
+    t_prep_start = time.perf_counter()
     files = scan_repository(repo_path)
     docs = read_repository(repo_path, files)
     context = get_repository_context(docs)
+    t_prep = time.perf_counter() - t_prep_start
 
+    t_llm_start = time.perf_counter()
     readme = generate_readme(context, repo_name=request.repo_name, repo_url=repo_url)
+    t_llm = time.perf_counter() - t_llm_start
+    total_time = time.perf_counter() - t_start
+
+    logger.info(
+        f"[PERF] op=generate-readme repo={request.repo_name} total_ms={total_time*1000:.1f} "
+        f"prep_ms={t_prep*1000:.1f} llm_ms={t_llm*1000:.1f} "
+        f"files={len(files)} context_chars={len(context)} readme_chars={len(readme)}"
+    )
+    response.headers["Server-Timing"] = (
+        f"total;dur={total_time*1000:.1f}, "
+        f"prep;dur={t_prep*1000:.1f}, "
+        f"llm;dur={t_llm*1000:.1f}"
+    )
 
     return {
         "success": True,
@@ -293,7 +361,8 @@ def generate_repo_readme(request: RepoNameRequest):
 
 
 @router.post("/index")
-def index_repository(request: RepoRequest):
+def index_repository(request: RepoRequest, response: Response):
+    t_start = time.perf_counter()
     clone = clone_repository(request.repo_url)
     repo_name = clone.get("repo_name") or os.path.basename(clone["path"])
     repo_path = os.path.join(REPOS_DIR, repo_name)
@@ -302,7 +371,13 @@ def index_repository(request: RepoRequest):
     files = scan_repository(repo_path)
     docs = read_repository(repo_path, files)
     chunks = chunk_documents(docs)
+    t_store_start = time.perf_counter()
     total = store_chunks(chunks, repo_name)
+    t_store = time.perf_counter() - t_store_start
+    total_time = time.perf_counter() - t_start
+
+    logger.info(f"[PERF] op=index repo={repo_name} total_ms={total_time*1000:.1f} store_ms={t_store*1000:.1f} chunks={total}")
+    response.headers["Server-Timing"] = f"total;dur={total_time*1000:.1f}, store;dur={t_store*1000:.1f}"
 
     return {
         "success": True,

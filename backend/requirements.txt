@@ -8,6 +8,7 @@ onnxruntime==1.27.0
 tokenizers==0.22.2
 
 openai==2.48.0
+httpx==0.28.1
 
 python-dotenv==1.2.2
 pydantic==2.13.4

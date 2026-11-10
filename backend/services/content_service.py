@@ -14,7 +14,7 @@ IMPORTANT_FILES = {
     "docker-compose.yml",
 }
 
-MAX_CONTEXT_CHARS = 16000 # ~4k tokens budget for repository context
+MAX_CONTEXT_CHARS = 8000 # ~2k tokens focused budget for repository context
 
 
 def read_repository(repo_path: str, files: list):

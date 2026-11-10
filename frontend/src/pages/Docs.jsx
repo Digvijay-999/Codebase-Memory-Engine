@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppSidebar } from '../components/layout/AppSidebar';
-import { FileText, Download, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, Download, Loader2, AlertCircle, RotateCw } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
 import ReactMarkdown from 'react-markdown';
@@ -8,10 +8,82 @@ import remarkGfm from 'remark-gfm';
 import { convertSafeHtmlToMarkdown, resolveLinkHref, resolveImageSrc } from '../lib/markdownUtils';
 
 export default function Docs() {
-  const [report, setReport] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [repoName, setRepoName] = useState('Core Engine');
+  const [repoName, setRepoName] = useState(() => localStorage.getItem('repo_name') || 'Core Engine');
   const [repoUrl, setRepoUrl] = useState(() => localStorage.getItem('repo_url') || '');
+  const [report, setReport] = useState(() => {
+    const cur = localStorage.getItem('repo_name');
+    if (!cur) return '';
+    return sessionStorage.getItem(`docs_report_${cur}`) || '';
+  });
+  const [loading, setLoading] = useState(() => {
+    const cur = localStorage.getItem('repo_name');
+    if (!cur) return false;
+    return !sessionStorage.getItem(`docs_report_${cur}`);
+  });
+  const [errorMsg, setErrorMsg] = useState('');
+  const activeControllerRef = useRef(null);
+
+  const fetchDocs = async (forceRefresh = false) => {
+    const currentRepo = localStorage.getItem('repo_name');
+    if (!currentRepo) {
+      setRepoName('None');
+      setReport('No repositories available to generate documentation from.');
+      setLoading(false);
+      return;
+    }
+
+    setRepoName(currentRepo);
+    setErrorMsg('');
+
+    if (!forceRefresh) {
+      const cached = sessionStorage.getItem(`docs_report_${currentRepo}`);
+      if (cached) {
+        setReport(cached);
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (activeControllerRef.current) {
+      activeControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    activeControllerRef.current = controller;
+
+    setLoading(true);
+    try {
+      const data = await api.explainRepo(currentRepo, { signal: controller.signal });
+      if (data && data.repo_url) {
+        setRepoUrl(data.repo_url);
+        localStorage.setItem('repo_url', data.repo_url);
+      }
+      const explanation = data.explanation || 'No documentation generated.';
+      setReport(explanation);
+      sessionStorage.setItem(`docs_report_${currentRepo}`, explanation);
+    } catch (error) {
+      if (error.message === 'Request was cancelled.') {
+        return;
+      }
+      console.error(error);
+      const msg = error.message || 'Unknown error occurred';
+      setErrorMsg(msg);
+      setReport(`**Error generating documentation:** ${msg}`);
+    } finally {
+      if (activeControllerRef.current === controller) {
+        setLoading(false);
+        activeControllerRef.current = null;
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchDocs(false);
+    return () => {
+      if (activeControllerRef.current) {
+        activeControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleExport = () => {
     const isInvalidReport = !report || report.startsWith('**Error') || report.includes('No repositories') || report === 'No documentation generated.';
@@ -32,35 +104,6 @@ export default function Docs() {
     URL.revokeObjectURL(url);
   };
 
-  useEffect(() => {
-    const fetchDocs = async () => {
-      try {
-        const currentRepo = localStorage.getItem('repo_name');
-        console.log('Selected repository:', currentRepo);
-
-        if (currentRepo) {
-          setRepoName(currentRepo);
-          console.log('Sending repo_name to backend:', currentRepo);
-          const data = await api.explainRepo(currentRepo);
-          if (data && data.repo_url) {
-            setRepoUrl(data.repo_url);
-            localStorage.setItem('repo_url', data.repo_url);
-          }
-          setReport(data.explanation || 'No documentation generated.');
-        } else {
-          setRepoName('None');
-          setReport('No repositories available to generate documentation from.');
-        }
-        } catch (error) {
-        console.error(error);
-        setReport(`**Error generating documentation:** ${error.message || 'Unknown error'}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDocs();
-  }, []);
-
   return (
     <div className="flex h-screen bg-bg overflow-hidden selection:bg-surface-elevated selection:text-accent">
       <AppSidebar />
@@ -71,16 +114,28 @@ export default function Docs() {
             <FileText size={18} className="text-text-secondary" />
             <span className="font-medium text-text-primary">Architecture Report: {repoName}</span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2"
-            onClick={handleExport}
-            disabled={loading || !report || report.startsWith('**Error') || report.includes('No repositories') || report === 'No documentation generated.'}
-          >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            Export Markdown
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-xs"
+              onClick={() => fetchDocs(true)}
+              disabled={loading || repoName === 'None'}
+            >
+              <RotateCw size={14} className={loading ? "animate-spin" : ""} />
+              Regenerate
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+              onClick={handleExport}
+              disabled={loading || !report || report.startsWith('**Error') || report.includes('No repositories') || report === 'No documentation generated.'}
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              Export Markdown
+            </Button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-8 lg:p-12">
@@ -88,7 +143,18 @@ export default function Docs() {
             {loading ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-accent mb-4" />
-                <p className="text-text-muted">Generating documentation...</p>
+                <p className="text-text-muted">Generating architecture documentation...</p>
+                <p className="text-xs text-text-muted/60 mt-1">Analyzing repository components and modules...</p>
+              </div>
+            ) : errorMsg ? (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center my-8">
+                <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-3" />
+                <h3 className="text-lg font-medium text-text-primary mb-2">Architecture Report Generation Failed</h3>
+                <p className="text-sm text-text-secondary max-w-md mx-auto mb-4">{errorMsg}</p>
+                <Button variant="outline" size="sm" onClick={() => fetchDocs(true)} className="gap-2">
+                  <RotateCw size={14} />
+                  Retry Generation
+                </Button>
               </div>
             ) : (
               <article className="prose prose-invert prose-headings:font-heading prose-headings:font-semibold prose-a:text-text-primary prose-p:text-text-secondary prose-li:text-text-secondary max-w-none">
