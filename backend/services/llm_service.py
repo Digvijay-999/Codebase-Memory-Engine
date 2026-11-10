@@ -76,6 +76,9 @@ def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
     global _last_llm_metrics
     client = get_openai_client()
     model_name = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
+    # Optional OpenRouter fallback list (tried in order if the primary errors); keep it to :free ids to stay unbilled.
+    fallbacks = [m.strip() for m in os.getenv("OPENROUTER_FALLBACK_MODELS", "").split(",") if m.strip()]
+    extra = {"extra_body": {"models": [model_name, *fallbacks]}} if fallbacks else {}
     max_retries = 1
     backoff_times = [2.0]
 
@@ -85,7 +88,8 @@ def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
             response = client.chat.completions.create(
                 model=model_name,
                 messages=[{"role": "user", "content": prompt}],
-                timeout=timeout
+                timeout=timeout,
+                **extra
             )
             elapsed = time.perf_counter() - start_time
             content = response.choices[0].message.content or ""
@@ -95,7 +99,7 @@ def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
                 "output_chars": len(content),
                 "model": model_name
             }
-            logger.info(f"[PERF] OpenRouter completed: model={model_name} prompt_chars={len(prompt)} output_chars={len(content)} elapsed={elapsed:.2f}s")
+            logger.info(f"[PERF] OpenRouter completed: model={getattr(response, 'model', None) or model_name} prompt_chars={len(prompt)} output_chars={len(content)} elapsed={elapsed:.2f}s")
             return content
         except openai.APITimeoutError as e:
             elapsed = time.perf_counter() - start_time
