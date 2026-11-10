@@ -27,7 +27,7 @@ export function ArchitectureFlow() {
 
         <div className="relative pt-8 pb-12">
           {/* Animated Connecting line (Desktop) */}
-          <div className="hidden md:block absolute top-[64px] left-[10%] right-[10%] h-px bg-surface-elevated z-0 overflow-hidden">
+          <div className="hidden lg:block absolute top-[64px] left-[10%] right-[10%] h-px bg-surface-elevated z-0 overflow-hidden">
             <motion.div 
               className="h-full bg-border"
               initial={{ scaleX: 0, transformOrigin: 'left' }}
@@ -38,7 +38,7 @@ export function ArchitectureFlow() {
           </div>
           
           {/* Animated Connecting line (Mobile) */}
-          <div className="md:hidden absolute top-8 bottom-12 left-[39px] w-px bg-surface-elevated z-0 overflow-hidden">
+          <div className="lg:hidden absolute top-8 bottom-12 left-[39px] w-px bg-surface-elevated z-0 overflow-hidden">
              <motion.div 
               className="w-full bg-border"
               initial={{ scaleY: 0, transformOrigin: 'top' }}
@@ -48,9 +48,9 @@ export function ArchitectureFlow() {
             />
           </div>
 
-          <ScrollReveal stagger={true} className="relative z-10 flex flex-col md:flex-row justify-between gap-12 md:gap-4">
+          <ScrollReveal stagger={true} className="relative z-10 flex flex-col lg:flex-row justify-between gap-12 lg:gap-4">
             {FLOW_STEPS.map((step, idx) => (
-              <ScrollRevealChild key={step.id} className="flex md:flex-col items-start md:items-center gap-6 md:gap-8 flex-1 relative group">
+              <ScrollRevealChild key={step.id} className="flex lg:flex-col items-start lg:items-center gap-6 lg:gap-8 flex-1 relative group">
                 
                 {/* Number Circle */}
                 <div className="w-12 h-12 rounded-full bg-surface-elevated border border-border flex items-center justify-center shrink-0 text-text-primary font-mono font-medium transition-colors group-hover:bg-accent group-hover:text-bg group-hover:border-accent">
@@ -58,7 +58,7 @@ export function ArchitectureFlow() {
                 </div>
                 
                 {/* Copy */}
-                <div className="flex-1 md:text-center mt-1 md:mt-0">
+                <div className="flex-1 lg:text-center mt-1 lg:mt-0">
                   <h4 className="text-card-heading text-[24px] text-text-primary mb-2">{step.title}</h4>
                   <p className="text-text-secondary leading-relaxed">{step.desc}</p>
                 </div>
