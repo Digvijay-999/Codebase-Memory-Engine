@@ -13,6 +13,16 @@ server {
     gzip_proxied expired no-cache no-store private auth;
     gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml application/javascript application/json image/svg+xml;
 
+    # Same-origin API: /api/x -> ${BACKEND_URL}/x (filled in from env by the nginx image's templates step)
+    location /api/ {
+        proxy_pass ${BACKEND_URL}/;
+        # Overwrite, not append: clients can't spoof their IP, and the backend trusts this header only from here.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Above the backend's 85s LLM deadline and the UI's 300s /index timeout.
+        proxy_read_timeout 310s;
+    }
+
     # Static Assets Caching
     location /assets/ {
         expires 1y;

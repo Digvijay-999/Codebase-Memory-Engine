@@ -51,11 +51,5 @@ PORT = int(os.getenv("PORT", "8000"))
 HOST = os.getenv("HOST", "0.0.0.0")
 # Only these peers (the nginx proxy) may set the client IP via X-Forwarded-For; it feeds the rate limiter.
 FORWARDED_ALLOW_IPS = os.getenv("FORWARDED_ALLOW_IPS", "127.0.0.1")
-ALLOWED_ORIGINS = [
-    origin.strip() 
-    for origin in os.getenv(
-        "ALLOWED_ORIGINS", 
-        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,*"
-    ).split(",") 
-    if origin.strip()
-]
+# Only needed when the frontend is on another origin (VITE_API_URL set); the default /api proxy is same-origin.
+ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()]

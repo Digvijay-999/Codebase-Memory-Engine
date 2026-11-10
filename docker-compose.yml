@@ -6,7 +6,8 @@ services:
     container_name: contextforge-backend
     restart: unless-stopped
     ports:
-      - "8001:8000"
+      # Local debugging only; the browser reaches the API through the frontend at /api.
+      - "127.0.0.1:8001:8000"
     env_file:
       - path: ./backend/.env
         required: false
@@ -18,7 +19,6 @@ services:
       - HOST=0.0.0.0
       # Trust X-Forwarded-For (the real client IP for rate limiting) only from the nginx proxy below.
       - FORWARDED_ALLOW_IPS=${PROXY_IP:-172.30.240.10}
-      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:80,http://127.0.0.1:5173,http://127.0.0.1:3000,http://localhost:8001,http://127.0.0.1:8001
     volumes:
       - chroma_data:/app/chroma_db
       - repos_data:/app/repos
@@ -34,9 +34,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=http://localhost:8001
+        # Optional: an API on another origin (then also set ALLOWED_ORIGINS for the backend).
+        - VITE_API_URL=${VITE_API_URL:-}
     container_name: contextforge-frontend
     restart: unless-stopped
+    environment:
+      - BACKEND_URL=${BACKEND_URL:-http://backend:8000}
     ports:
       - "3000:80"
     networks:
@@ -45,6 +48,7 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+        restart: true  # nginx resolves the backend once; restart it when compose recreates the backend
 
 networks:
   default:

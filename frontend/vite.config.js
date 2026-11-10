@@ -5,6 +5,10 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // `npm run dev`: same /api path as nginx in production, sent to the backend's local debug port.
+  server: {
+    proxy: { '/api': { target: 'http://localhost:8001', rewrite: (path) => path.replace(/^\/api/, '') } },
+  },
   build: {
     chunkSizeWarningLimit: 1200,
     rollupOptions: {

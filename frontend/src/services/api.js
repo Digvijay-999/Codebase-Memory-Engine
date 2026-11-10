@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+// Same origin by default (nginx, or the Vite dev proxy, forwards /api to the backend); VITE_API_URL overrides it.
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const DEFAULT_TIMEOUT = 120000; // 120 seconds
 
 const fetchWithTimeout = async (url, options = {}) => {
