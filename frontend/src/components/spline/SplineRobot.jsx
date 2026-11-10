@@ -35,6 +35,8 @@ export function SplineRobot({ className }) {
   const containerRef = useRef(null);
   const splineAppRef = useRef(null);
   const isInView = useInView(containerRef, { margin: "200px" });
+  // Never fetch the Spline chunk/scene/WASM until the container is (nearly) visible; it is display:none below lg.
+  const shouldLoad = useInView(containerRef, { once: true, margin: "200px" });
 
   useEffect(() => {
     if (splineAppRef.current) {
@@ -60,14 +62,16 @@ export function SplineRobot({ className }) {
       {/* Subtle radial vignette behind spline */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_0%,transparent_60%)] pointer-events-none"></div>
       
-      <Suspense fallback={<Skeleton />}>
-        <LazySpline 
-          scene={SPLINE_SCENE_URL} 
-          onLoad={(app) => { splineAppRef.current = app; }}
-          onError={() => setHasError(true)}
-          style={{ width: '100%', height: '100%' }}
-        />
-      </Suspense>
+      {shouldLoad ? (
+        <Suspense fallback={<Skeleton />}>
+          <LazySpline 
+            scene={SPLINE_SCENE_URL} 
+            onLoad={(app) => { splineAppRef.current = app; }}
+            onError={() => setHasError(true)}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </Suspense>
+      ) : <Skeleton />}
     </div>
   );
 }
