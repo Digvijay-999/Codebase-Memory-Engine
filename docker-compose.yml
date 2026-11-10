@@ -16,6 +16,8 @@ services:
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-nvidia/nemotron-3-ultra-550b-a55b:free}
       - PORT=8000
       - HOST=0.0.0.0
+      # Trust X-Forwarded-For (the real client IP for rate limiting) only from the nginx proxy below.
+      - FORWARDED_ALLOW_IPS=${PROXY_IP:-172.30.240.10}
       - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:80,http://127.0.0.1:5173,http://127.0.0.1:3000,http://localhost:8001,http://127.0.0.1:8001
     volumes:
       - chroma_data:/app/chroma_db
@@ -37,9 +39,19 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
+    networks:
+      default:
+        ipv4_address: ${PROXY_IP:-172.30.240.10}
     depends_on:
       backend:
         condition: service_healthy
+
+networks:
+  default:
+    ipam:
+      config:
+        # Fixed so the proxy has a known IP. If it overlaps a network on the host, set DOCKER_SUBNET and PROXY_IP in .env.
+        - subnet: ${DOCKER_SUBNET:-172.30.240.0/24}
 
 volumes:
   chroma_data:

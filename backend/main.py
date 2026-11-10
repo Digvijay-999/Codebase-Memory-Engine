@@ -15,7 +15,7 @@ from services.llm_service import (
     close_openai_client
 )
 from services.embedding_service import warmup_model, collection
-from config.settings import ALLOWED_ORIGINS, HOST, PORT
+from config.settings import ALLOWED_ORIGINS, FORWARDED_ALLOW_IPS, HOST, PORT
 
 # Root handler stays at WARNING (quiet third-party libs); only our packages log INFO ([PERF] lines).
 # Uvicorn's loggers don't propagate to root, so its lines are not duplicated.
@@ -100,4 +100,5 @@ app.add_middleware(
 app.include_router(router)
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host=HOST, port=PORT, reload=False)
+    uvicorn.run("main:app", host=HOST, port=PORT, reload=False,
+                proxy_headers=True, forwarded_allow_ips=FORWARDED_ALLOW_IPS)

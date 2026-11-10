@@ -3,7 +3,7 @@ import json
 import time
 import logging
 from collections import Counter
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 
 from schemas.repo_schema import RepoRequest
 from schemas.embedding_schema import EmbeddingRequest
@@ -18,10 +18,13 @@ from services.chunk_service import chunk_documents
 from services.embedding_service import create_embedding, store_chunks, search_chunks
 from services.llm_service import ask_llm, analyze_repository, explain_repository, generate_readme
 from git import Repo
-from config.settings import REPOS_DIR
+from services.rate_limit import rate_limit
+from config.settings import REPOS_DIR, RATE_LIMIT_WINDOW_S, LLM_RATE_LIMIT, INDEX_RATE_LIMIT
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+llm_limit = Depends(rate_limit("llm", LLM_RATE_LIMIT, RATE_LIMIT_WINDOW_S))
+index_limit = Depends(rate_limit("index", INDEX_RATE_LIMIT, RATE_LIMIT_WINDOW_S))
 
 
 def _get_repo_origin_url(repo_path: str) -> str:
@@ -55,7 +58,7 @@ def _require_indexed(results: dict, repo_name: str) -> None:
         )
 
 
-@router.post("/clone")
+@router.post("/clone", dependencies=[index_limit])
 def clone_repo(request: RepoRequest):
     return clone_repository(request.repo_url)
 
@@ -127,7 +130,7 @@ def embed_text(request: EmbeddingRequest):
     }
 
 
-@router.post("/store/{repo_name}")
+@router.post("/store/{repo_name}", dependencies=[index_limit])
 def store_repo(repo_name: str):
     repo_path = _get_repo_path(repo_name)
     files = scan_repository(repo_path)
@@ -158,7 +161,7 @@ def search(request: SearchRequest, response: Response):
     }
 
 
-@router.post("/ask")
+@router.post("/ask", dependencies=[llm_limit])
 def ask(request: AskRequest, response: Response):
     t_start = time.perf_counter()
     repo_name_clean = request.repo_name
@@ -217,7 +220,7 @@ def ask(request: AskRequest, response: Response):
     }
 
 
-@router.post("/analyze")
+@router.post("/analyze", dependencies=[llm_limit])
 def analyze_repo(request: AskRequest, response: Response):
     t_start = time.perf_counter()
     repo_path = _get_repo_path(request.repo_name)
@@ -241,7 +244,7 @@ def analyze_repo(request: AskRequest, response: Response):
     }
 
 
-@router.post("/explain")
+@router.post("/explain", dependencies=[llm_limit])
 def explain(request: RepoNameRequest, response: Response):
     t_start = time.perf_counter()
     repo_path = _get_repo_path(request.repo_name)
@@ -335,7 +338,7 @@ def explain(request: RepoNameRequest, response: Response):
     }
 
 
-@router.post("/generate-readme")
+@router.post("/generate-readme", dependencies=[llm_limit])
 def generate_repo_readme(request: RepoNameRequest, response: Response):
     t_start = time.perf_counter()
     repo_path = _get_repo_path(request.repo_name)
@@ -371,7 +374,7 @@ def generate_repo_readme(request: RepoNameRequest, response: Response):
     }
 
 
-@router.post("/index")
+@router.post("/index", dependencies=[index_limit])
 def index_repository(request: RepoRequest, response: Response):
     t_start = time.perf_counter()
     clone = clone_repository(request.repo_url)

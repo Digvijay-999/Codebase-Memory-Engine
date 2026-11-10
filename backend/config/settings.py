@@ -41,10 +41,16 @@ CLONE_TIMEOUT_S = float(os.getenv("CLONE_TIMEOUT_S", "60"))
 MAX_REPO_MB = float(os.getenv("MAX_REPO_MB", "100"))
 MAX_FILES = int(os.getenv("MAX_FILES", "5000"))
 MAX_REPOS = int(os.getenv("MAX_REPOS", "20"))
+# Per-client-IP rate limits over a sliding window; over the limit returns 429 with Retry-After.
+RATE_LIMIT_WINDOW_S = float(os.getenv("RATE_LIMIT_WINDOW_S", "60"))
+LLM_RATE_LIMIT = int(os.getenv("LLM_RATE_LIMIT", "10"))      # /ask, /analyze, /explain, /generate-readme
+INDEX_RATE_LIMIT = int(os.getenv("INDEX_RATE_LIMIT", "3"))   # /index, /clone, /store
 
 # Server & CORS
 PORT = int(os.getenv("PORT", "8000"))
 HOST = os.getenv("HOST", "0.0.0.0")
+# Only these peers (the nginx proxy) may set the client IP via X-Forwarded-For; it feeds the rate limiter.
+FORWARDED_ALLOW_IPS = os.getenv("FORWARDED_ALLOW_IPS", "127.0.0.1")
 ALLOWED_ORIGINS = [
     origin.strip() 
     for origin in os.getenv(
