@@ -16,7 +16,7 @@ import logging
 import anyio
 import httpx
 from typing import Optional, Dict, Any
-from config.settings import LLM_TOTAL_TIMEOUT_S
+from config.settings import LLM_TOTAL_TIMEOUT_S, OPENROUTER_MODEL, OPENROUTER_FALLBACK_MODELS
 
 logger = logging.getLogger(__name__)
 
@@ -94,9 +94,9 @@ def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0) -> str:
 async def _call_openrouter(prompt: str, timeout: float) -> str:
     global _last_llm_metrics
     client = get_openai_client()
-    model_name = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
+    model_name = os.getenv("OPENROUTER_MODEL", OPENROUTER_MODEL)
     # Optional OpenRouter fallback list (tried in order if the primary errors); keep it to :free ids to stay unbilled.
-    fallbacks = [m.strip() for m in os.getenv("OPENROUTER_FALLBACK_MODELS", "").split(",") if m.strip()]
+    fallbacks = [m.strip() for m in os.getenv("OPENROUTER_FALLBACK_MODELS", OPENROUTER_FALLBACK_MODELS).split(",") if m.strip()]
     extra = {"extra_body": {"models": [model_name, *fallbacks]}} if fallbacks else {}
     max_retries = 1
     backoff_times = [2.0]

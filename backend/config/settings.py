@@ -18,7 +18,9 @@ CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", str(BASE_DIR / "chroma_db"))
 # Models & Search
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 MODEL_DIR = Path(os.getenv("MODEL_DIR", str(BASE_DIR / "models" / "all-MiniLM-L6-v2")))
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
+# Tried in order by OpenRouter if the primary errors (verified: a delisted primary falls through). Keep them :free.
+OPENROUTER_FALLBACK_MODELS = os.getenv("OPENROUTER_FALLBACK_MODELS", "cohere/north-mini-code:free,google/gemma-4-31b-it:free")
 TOP_K_RESULTS = int(os.getenv("TOP_K_RESULTS", "5"))
 # Total limit for one LLM operation (attempts, retry, fallback). It can only shorten the per-endpoint caps
 # (60s /ask, 85s whole-repo), which stay below the UI timeouts in frontend/src/services/api.js.
