@@ -15,7 +15,7 @@ from services.llm_service import (
     close_openai_client
 )
 from services.embedding_service import warmup_model, collection
-from config.settings import ALLOWED_ORIGINS, FORWARDED_ALLOW_IPS, HOST, PORT
+from config.settings import ALLOWED_ORIGINS, APP_ENV, FORWARDED_ALLOW_IPS, HOST, PORT
 
 # Root handler stays at WARNING (quiet third-party libs); only our packages log INFO ([PERF] lines).
 # Uvicorn's loggers don't propagate to root, so its lines are not duplicated.
@@ -39,11 +39,15 @@ async def lifespan(app: FastAPI):
         print(f"Warning during client shutdown: {e}")
 
 
+_api_docs = APP_ENV != "production"  # no /docs, /redoc or /openapi.json in production
 app = FastAPI(
     title="ContextForge API",
     description="AI-powered Codebase Memory Engine",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs" if _api_docs else None,
+    redoc_url="/redoc" if _api_docs else None,
+    openapi_url="/openapi.json" if _api_docs else None,
 )
 
 

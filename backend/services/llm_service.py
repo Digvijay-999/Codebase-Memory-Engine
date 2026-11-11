@@ -13,11 +13,13 @@ else:
 
 import time
 import logging
+import threading
+from datetime import datetime, timezone
 import anyio
 import httpx
 from typing import Optional, Dict, Any
 from config.settings import (
-    LLM_TOTAL_TIMEOUT_S, OPENROUTER_MODEL, OPENROUTER_FALLBACK_MODELS, OPENROUTER_MODEL_LONG, OPENROUTER_FALLBACK_MODELS_LONG
+    LLM_DAILY_LIMIT, LLM_TOTAL_TIMEOUT_S, OPENROUTER_MODEL, OPENROUTER_FALLBACK_MODELS, OPENROUTER_MODEL_LONG, OPENROUTER_FALLBACK_MODELS_LONG
 )
 
 logger = logging.getLogger(__name__)
@@ -34,6 +36,9 @@ class OpenRouterTimeoutException(OpenRouterRetryException):
 
 class OpenRouterRateLimitException(OpenRouterRetryException):
     pass
+
+class LLMDailyLimitException(OpenRouterRateLimitException):
+    pass  # handled as 429 by the OpenRouterRateLimitException handler
 
 class OpenRouterConfigException(Exception):
     def __init__(self, message: str, status_code: int):
@@ -75,7 +80,22 @@ def get_openai_client() -> openai.AsyncOpenAI:
         _client_api_key = api_key
     return _client
 
+# shortcut: the daily count is in memory, per process, so a restart resets it; persist it if restarts get frequent.
+_daily_lock = threading.Lock()
+_daily_usage: Dict[str, Any] = {"day": None, "calls": 0}
+
+def _take_daily_slot() -> None:
+    """Counts one LLM call against LLM_DAILY_LIMIT, shared by all visitors and reset at 00:00 UTC."""
+    with _daily_lock:
+        today = datetime.now(timezone.utc).date()
+        if _daily_usage["day"] != today:
+            _daily_usage.update(day=today, calls=0)
+        if _daily_usage["calls"] >= LLM_DAILY_LIMIT:
+            raise LLMDailyLimitException("Demo limit reached for today. The AI has answered as many questions as it can for all visitors today; it resets at 00:00 UTC, so please come back tomorrow.")
+        _daily_usage["calls"] += 1
+
 def call_openrouter_with_backoff(prompt: str, timeout: float = 60.0, whole_repo: bool = False) -> str:
+    _take_daily_slot()
     # One total deadline over every attempt, backoff sleep and OpenRouter fallback. Endpoints are sync and run in
     # AnyIO worker threads, so the call runs on the app's event loop; hitting the deadline cancels it and closes the
     # upstream connection. LLM_TOTAL_TIMEOUT_S can only shorten the per-endpoint caps (60s ask, 85s whole-repo).

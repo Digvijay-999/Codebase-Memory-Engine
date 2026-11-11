@@ -11,7 +11,7 @@ from schemas.search_schema import SearchRequest
 from schemas.ask_schema import AskRequest
 from schemas.repo_name_schema import RepoNameRequest
 
-from services.repo_service import clone_repository
+from services.repo_service import TMP_PREFIX, clone_repository
 from services.file_service import scan_repository
 from services.content_service import read_repository, get_repository_context
 from services.chunk_service import chunk_documents
@@ -19,12 +19,22 @@ from services.embedding_service import create_embedding, store_chunks, search_ch
 from services.llm_service import ask_llm, analyze_repository, explain_repository, generate_readme
 from git import Repo
 from services.rate_limit import rate_limit
-from config.settings import REPOS_DIR, RATE_LIMIT_WINDOW_S, LLM_RATE_LIMIT, INDEX_RATE_LIMIT
+from config.settings import REPOS_DIR, RATE_LIMIT_WINDOW_S, LLM_RATE_LIMIT, INDEX_RATE_LIMIT, SEARCH_RATE_LIMIT, ENABLE_DEBUG_ENDPOINTS
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 llm_limit = Depends(rate_limit("llm", LLM_RATE_LIMIT, RATE_LIMIT_WINDOW_S))
 index_limit = Depends(rate_limit("index", INDEX_RATE_LIMIT, RATE_LIMIT_WINDOW_S))
+search_limit = Depends(rate_limit("search", SEARCH_RATE_LIMIT, RATE_LIMIT_WINDOW_S))
+
+
+def _debug_only():
+    # Debug routes are not used by the UI; unless enabled they look like they don't exist.
+    if not ENABLE_DEBUG_ENDPOINTS:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+debug_only = Depends(_debug_only)
 
 
 def _get_repo_origin_url(repo_path: str) -> str:
@@ -42,7 +52,7 @@ def _get_repo_path(repo_name: str) -> str:
     safe_name = os.path.basename(repo_name)
     repo_path = os.path.join(REPOS_DIR, safe_name)
     # basename keeps "." and "..", which would resolve to REPOS_DIR itself or its parent (the app source in Docker)
-    if safe_name in ("", ".", "..") or not os.path.exists(repo_path):
+    if safe_name in ("", ".", "..") or os.path.islink(repo_path) or not os.path.exists(repo_path):
         raise HTTPException(
             status_code=404,
             detail=f"Repository '{repo_name}' not found."
@@ -59,7 +69,7 @@ def _require_indexed(results: dict, repo_name: str) -> None:
         )
 
 
-@router.post("/clone", dependencies=[index_limit])
+@router.post("/clone", dependencies=[debug_only, index_limit])
 def clone_repo(request: RepoRequest):
     return clone_repository(request.repo_url)
 
@@ -72,7 +82,7 @@ def list_repos():
     repos = []
     try:
         for item in os.listdir(REPOS_DIR):
-            if os.path.isdir(os.path.join(REPOS_DIR, item)):
+            if os.path.isdir(os.path.join(REPOS_DIR, item)) and not item.startswith(TMP_PREFIX):
                 repos.append(item)
     except Exception:
         pass
@@ -94,7 +104,7 @@ def scan_repo(repo_name: str):
     }
 
 
-@router.get("/content/{repo_name}")
+@router.get("/content/{repo_name}", dependencies=[debug_only])
 def get_content(repo_name: str):
     repo_path = _get_repo_path(repo_name)
     files = scan_repository(repo_path)
@@ -107,7 +117,7 @@ def get_content(repo_name: str):
     }
 
 
-@router.get("/chunks/{repo_name}")
+@router.get("/chunks/{repo_name}", dependencies=[debug_only])
 def get_chunks(repo_name: str):
     repo_path = _get_repo_path(repo_name)
     files = scan_repository(repo_path)
@@ -121,7 +131,7 @@ def get_chunks(repo_name: str):
     }
 
 
-@router.post("/embed")
+@router.post("/embed", dependencies=[debug_only])
 def embed_text(request: EmbeddingRequest):
     embedding = create_embedding(request.text)
 
@@ -131,7 +141,7 @@ def embed_text(request: EmbeddingRequest):
     }
 
 
-@router.post("/store/{repo_name}", dependencies=[index_limit])
+@router.post("/store/{repo_name}", dependencies=[debug_only, index_limit])
 def store_repo(repo_name: str):
     repo_path = _get_repo_path(repo_name)
     files = scan_repository(repo_path)
@@ -146,7 +156,7 @@ def store_repo(repo_name: str):
     }
 
 
-@router.post("/search")
+@router.post("/search", dependencies=[search_limit])
 def search(request: SearchRequest, response: Response):
     t_start = time.perf_counter()
     results = search_chunks(request.query, request.repo_name)

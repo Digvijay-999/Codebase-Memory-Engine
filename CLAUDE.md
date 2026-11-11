@@ -39,12 +39,12 @@ frontend/src/
 
 | Module | Responsibility |
 |---|---|
-| `repo_service.clone_repository` | Accepts only `https://github.com/<owner>/<repo>[.git][/]` (400 otherwise, before git runs). Name = repo segment. If the folder exists it is reused **without pulling**; else `git clone --depth 1 --no-recurse-submodules` via `subprocess` with `CLONE_TIMEOUT_S`, then `MAX_REPO_MB`/`MAX_FILES` checks (413, clone deleted); `MAX_REPOS` → 409. |
+| `repo_service.clone_repository` | Accepts only `https://github.com/<owner>/<repo>[.git][/]` (400 otherwise, before git runs). Name = repo segment. If the folder exists it is reused **without pulling**; else `git clone --depth 1 --no-recurse-submodules` via `subprocess` into `REPOS_DIR/~clone-<name>-*` with `CLONE_TIMEOUT_S`, then `MAX_REPO_MB`/`MAX_FILES` checks (413, temp deleted), then `os.rename` into place. A second request for a repo being cloned → 409 (in-process per-repo lock); `MAX_REPOS` → 409. |
 | `file_service.scan_repository` | `os.walk` with `IGNORED_DIRS`, skips symlinks and anything resolving outside the repo, all dot-dirs/dotfiles, lockfiles, minified/map files, empty files, files > `MAX_FILE_SIZE_BYTES` (500 KB); keeps only `SUPPORTED_EXTENSIONS`. |
 | `content_service` | `read_repository` (UTF-8, errors ignored, `/` paths); `get_repository_context` builds the whole-repo context: `IMPORTANT_FILES` first (2500 chars each), then other files (1500 chars each) in walk order until `MAX_CONTEXT_CHARS` (8000). |
 | `chunk_service.chunk_documents` | Character sliding window, `CHUNK_SIZE` 800 / `CHUNK_OVERLAP` 100; output `{file, content}`. Not code-aware. |
 | `embedding_service` | `ONNXEmbeddingModel` (singleton via `get_model`), Chroma client + `codebase` collection (created **at import time**), `store_chunks`, `search_chunks`, `create_embedding`, `warmup_model`. |
-| `rate_limit` | In-memory per-client-IP sliding window as a FastAPI dependency: `LLM_RATE_LIMIT` (ask/analyze/explain/readme), `INDEX_RATE_LIMIT` (index/clone/store) per `RATE_LIMIT_WINDOW_S`; 429 + `Retry-After`. |
+| `rate_limit` | In-memory per-client-IP sliding window as a FastAPI dependency: `LLM_RATE_LIMIT` (ask/analyze/explain/readme), `INDEX_RATE_LIMIT` (index/clone/store), `SEARCH_RATE_LIMIT` (search) per `RATE_LIMIT_WINDOW_S`; 429 + `Retry-After`. |
 | `llm_service` | Shared OpenAI client → `https://openrouter.ai/api/v1`; `call_openrouter_with_backoff`; prompt builders `ask_llm`, `analyze_repository`, `explain_repository`, `generate_readme` (+ `_normalize_readme_output`); custom exceptions. |
 
 ## Workflows
@@ -58,7 +58,7 @@ frontend/src/
 
 **Whole-repo — `/analyze`, `/explain`, `/generate-readme`**: re-scan and read from disk, `get_repository_context`, LLM call with 85 s timeout. `/explain` additionally computes metadata JSON in the router (language counts, LOC, `@router`/`@app` lines, service/schema paths, dependencies). `/generate-readme` post-processes via `_normalize_readme_output`.
 
-**LLM call**: single user message (no system role, no chat history, no streaming). Env is read at call time; `config/settings.py` holds the defaults. `/ask` uses `OPENROUTER_MODEL` and sends `OPENROUTER_FALLBACK_MODELS` as OpenRouter's `models` fallback list. Whole-repo endpoints use `OPENROUTER_MODEL_LONG` + `OPENROUTER_FALLBACK_MODELS_LONG` (empty `OPENROUTER_MODEL_LONG` → the primary chain) and always send `reasoning: {effort: none}`. One total deadline per call = min(endpoint cap 60 s / 85 s, `LLM_TOTAL_TIMEOUT_S`), enforced with `anyio.fail_after` on the app's event loop (sync endpoints call in via `anyio.from_thread.run`), which cancels the upstream request. SDK retries disabled; one manual retry (2 s for 429/5xx, 1 s for connection errors) only if < 15 s elapsed; timeouts are never retried. Offline self-checks: `scripts/manual/test_llm_deadline.py`, `test_llm_routing.py`.
+**LLM call**: single user message (no system role, no chat history, no streaming). Env is read at call time; `config/settings.py` holds the defaults. `/ask` uses `OPENROUTER_MODEL` and sends `OPENROUTER_FALLBACK_MODELS` as OpenRouter's `models` fallback list. Whole-repo endpoints use `OPENROUTER_MODEL_LONG` + `OPENROUTER_FALLBACK_MODELS_LONG` (empty `OPENROUTER_MODEL_LONG` → the primary chain) and always send `reasoning: {effort: none}`. One total deadline per call = min(endpoint cap 60 s / 85 s, `LLM_TOTAL_TIMEOUT_S`), enforced with `anyio.fail_after` on the app's event loop (sync endpoints call in via `anyio.from_thread.run`), which cancels the upstream request. SDK retries disabled; one manual retry (2 s for 429/5xx, 1 s for connection errors) only if < 15 s elapsed; timeouts are never retried. Every call first takes a slot from the global `LLM_DAILY_LIMIT` (all visitors, resets 00:00 UTC, in memory); when it's used up `LLMDailyLimitException` → 429 "Demo limit reached for today…". Offline self-checks: `scripts/manual/test_llm_deadline.py`, `test_llm_routing.py`.
 
 **Errors**: `OpenRouterTimeoutException`→504, `OpenRouterRateLimitException`→429, `OpenRouterRetryException`→503, `OpenRouterConfigException`→its status (401 missing/invalid key, 404 model, 500 other); these return `{success:false, error, detail}`. `HTTPException`s (clone 400/409/413, unknown repo 404, rate limit 429 + `Retry-After`, Chroma 500) return FastAPI's default `{detail}`. `api.js` reads `error || detail || message`.
 
@@ -94,7 +94,7 @@ Docker: `docker compose up --build` (key via root `.env` or `backend/.env`); `do
 - In-process: `python scripts/manual/verify_audit.py` (FastAPI `TestClient` audit; uses the real model and data).
 - Chroma tools: `python inspect_chroma.py`, `python cleanup_chroma_legacy.py --dry-run` (omit `--dry-run` to delete), `python index_local_repo.py` (indexes `repos/codebase-memory-engine`).
 - Known broken: `scripts/manual/test_sim.py` imports `sentence_transformers` (removed); `test_rag_debug.py` calls `ask()` without the now-required `response` argument.
-- Debug-only endpoints for inspecting pipeline stages: `/clone`, `/content/{repo}`, `/chunks/{repo}` (first 5), `/embed` (first 10 dims), `/store/{repo}`.
+- Debug-only endpoints for inspecting pipeline stages (404 unless `ENABLE_DEBUG_ENDPOINTS=true`; the UI uses none of them): `/clone`, `/content/{repo}`, `/chunks/{repo}` (first 5), `/embed` (first 10 dims), `/store/{repo}`. `APP_ENV=production` turns off `/docs`, `/redoc`, `/openapi.json`.
 - Timing: every pipeline endpoint logs `[PERF] op=...` and sets a `Server-Timing` header (visible in browser devtools).
 
 ## Coding conventions
@@ -117,7 +117,7 @@ Docker: `docker compose up --build` (key via root `.env` or `backend/.env`); `do
 
 - Secrets only via environment (`backend/.env`, root `.env`); never commit them. `.gitignore` covers `.env*`, `chroma_db/`, `*.sqlite*`, `*.db`, `repos/`, `venv/`, `*.onnx` — keep it that way. Note `chroma_db/chroma.sqlite3` exists in past history (commits `4d0ea51`/`cfbb483`).
 - Keep `os.path.basename` path-traversal guarding on any `repo_name` that touches the filesystem.
-- No authentication. Per-IP rate limits and the GitHub-only clone allowlist exist, but `/content/{repo}` returns full file contents and the debug endpoints are open. Expose only the nginx origin, never the backend port.
+- No authentication. Per-IP rate limits and the GitHub-only clone allowlist exist, and the debug endpoints (incl. `/content/{repo}`, which returns full files) are off by default. Expose only the nginx origin, never the backend port.
 - Repository content is inserted verbatim into LLM prompts (prompt-injection surface); don't give LLM output any privileges.
 - `ALLOWED_ORIGINS` is empty by default (same-origin `/api`); list explicit origins only for a separately hosted frontend.
 - Never read through symlinks in cloned repos (a link can point at `/proc/self/environ` or other secrets); the scanner and the `/ask` README read skip them.

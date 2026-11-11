@@ -1,5 +1,10 @@
-import pytest
+import importlib
 
+import pytest
+from fastapi.testclient import TestClient
+
+import config.settings
+import main
 import services.llm_service as llm_service
 
 FILES = {"README.md", "app.py", "api/routes.py"}
@@ -76,6 +81,18 @@ def test_whole_repo_llm_endpoints(client, demo_repo, llm, path, body, key):
     assert r.status_code == 200
     assert r.json()[key] == "stub answer (whole-repo)"
     assert "def create_app" in llm[-1]  # the repo's files are in the prompt
+
+
+def test_api_docs_are_off_in_production(client, monkeypatch):
+    assert client.get("/openapi.json").status_code == 200  # on by default (development)
+    monkeypatch.setattr(config.settings, "APP_ENV", "production")
+    prod = TestClient(importlib.reload(main).app)
+    try:
+        assert [prod.get(p).status_code for p in ("/docs", "/redoc", "/openapi.json")] == [404, 404, 404]
+        assert prod.get("/health").status_code == 200
+    finally:
+        monkeypatch.undo()
+        importlib.reload(main)
 
 
 def test_llm_timeout_is_504(client, indexed_demo, monkeypatch):

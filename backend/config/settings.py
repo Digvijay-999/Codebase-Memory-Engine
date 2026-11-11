@@ -45,6 +45,14 @@ MAX_REPOS = int(os.getenv("MAX_REPOS", "20"))
 RATE_LIMIT_WINDOW_S = float(os.getenv("RATE_LIMIT_WINDOW_S", "60"))
 LLM_RATE_LIMIT = int(os.getenv("LLM_RATE_LIMIT", "10"))      # /ask, /analyze, /explain, /generate-readme
 INDEX_RATE_LIMIT = int(os.getenv("INDEX_RATE_LIMIT", "3"))   # /index, /clone, /store
+SEARCH_RATE_LIMIT = int(os.getenv("SEARCH_RATE_LIMIT", "30"))  # /search (CPU embedding)
+# Global cap on LLM calls per UTC day across all visitors; over it, LLM endpoints return 429.
+LLM_DAILY_LIMIT = int(os.getenv("LLM_DAILY_LIMIT", "200"))
+
+# "production" turns off /docs, /redoc and /openapi.json.
+APP_ENV = os.getenv("APP_ENV", "development")
+# Debug-only routes (/clone, /content, /chunks, /embed, /store) return 404 unless this is "true".
+ENABLE_DEBUG_ENDPOINTS = os.getenv("ENABLE_DEBUG_ENDPOINTS", "false").lower() == "true"
 
 # Server & CORS
 PORT = int(os.getenv("PORT", "8000"))

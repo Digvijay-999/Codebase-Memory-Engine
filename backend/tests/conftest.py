@@ -13,6 +13,7 @@ os.environ.update(
     CHROMA_DB_PATH=os.path.join(_TMP, "chroma"),
     OPENROUTER_API_KEY="test-key-never-sent",
     ANONYMIZED_TELEMETRY="False",
+    ENABLE_DEBUG_ENDPOINTS="true",  # tests drive the pipeline through /store, /content and /clone
 )
 os.makedirs(os.environ["REPOS_DIR"])
 
@@ -71,6 +72,7 @@ def indexed_demo(client, demo_repo):
 @pytest.fixture(autouse=True)
 def fresh_rate_limits():
     rate_limit._hits.clear()
+    llm_service._daily_usage.update(day=None, calls=0)
 
 
 @pytest.fixture(autouse=True)
