@@ -30,7 +30,7 @@ import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motio
 import * as React from "react"
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { convertSafeHtmlToMarkdown, resolveLinkHref, resolveImageSrc } from '../../lib/markdownUtils';
+import { convertSafeHtmlToMarkdown, resolveLinkHref, resolveImageSrc, isExternalImage, linkedImageLabel } from '../../lib/markdownUtils';
 
 interface UseAutoResizeTextareaProps {
     minHeight: number;
@@ -620,12 +620,15 @@ export function AnimatedAIChat() {
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             {...props}
-                                                        />
+                                                        >{linkedImageLabel(node, targetRepo) ?? props.children}</a>
                                                     );
                                                 },
                                                 img: ({node, src, alt, ...props}: any) => {
                                                     const targetRepo = msg.repoUrl || repoUrl;
                                                     const finalSrc = resolveImageSrc(src, targetRepo);
+                                                    if (isExternalImage(finalSrc)) {
+                                                        return <a className="text-sm text-[#4ADE80] hover:underline" href={finalSrc} target="_blank" rel="noopener noreferrer">{alt || 'Image'}</a>;
+                                                    }
                                                     return (
                                                         <img
                                                             className="rounded-lg max-h-48 max-w-full my-4 mx-auto object-contain block border border-[#232A32] bg-[#1A2129]/40 p-2"

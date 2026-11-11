@@ -68,6 +68,27 @@ export function resolveLinkHref(href, repoUrl) {
 }
 
 /**
+ * True for an http(s) image on another origin. The CSP blocks those, so they are shown as links and never requested.
+ */
+export function isExternalImage(src) {
+  try {
+    const url = new URL(src, window.location.href);
+    return url.protocol.startsWith('http') && url.origin !== window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * For a link wrapping an external image ([![alt](img)](href)): the alt text to show in place of the image,
+ * so an image link never nests inside a link.
+ */
+export function linkedImageLabel(node, repoUrl) {
+  const img = node?.children?.find((child) => child.tagName === 'img');
+  return img && isExternalImage(resolveImageSrc(img.properties?.src, repoUrl)) ? (img.properties.alt || 'Image') : undefined;
+}
+
+/**
  * Resolves markdown image sources so relative images point to raw GitHub content.
  */
 export function resolveImageSrc(src, repoUrl) {

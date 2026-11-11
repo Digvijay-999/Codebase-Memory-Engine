@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { convertSafeHtmlToMarkdown, resolveLinkHref, resolveImageSrc } from '../lib/markdownUtils';
+import { convertSafeHtmlToMarkdown, resolveLinkHref, resolveImageSrc, isExternalImage, linkedImageLabel } from '../lib/markdownUtils';
 
 export default function Docs() {
   const [repoName, setRepoName] = useState(() => localStorage.getItem('repo_name') || 'Core Engine');
@@ -180,11 +180,14 @@ export default function Docs() {
                           target="_blank"
                           rel="noopener noreferrer"
                           {...props}
-                        />
+                        >{linkedImageLabel(node, repoUrl) ?? props.children}</a>
                       );
                     },
                     img: ({node, src, alt, ...props}) => {
                       const finalSrc = resolveImageSrc(src, repoUrl);
+                      if (isExternalImage(finalSrc)) {
+                        return <a className="text-sm text-[#4ADE80] hover:underline" href={finalSrc} target="_blank" rel="noopener noreferrer">{alt || 'Image'}</a>;
+                      }
                       return (
                         <img
                           className="rounded-lg max-h-48 max-w-full my-4 mx-auto object-contain block border border-[#232A32] bg-[#1A2129]/40 p-2"
