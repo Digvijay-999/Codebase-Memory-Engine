@@ -104,6 +104,17 @@ def test_repo_count_limit(client, no_git, demo_repo, monkeypatch):
     assert r.status_code == 409 and "limit" in r.json()["detail"]
 
 
+# --- Repo names can't escape REPOS_DIR ---
+
+@pytest.mark.parametrize("name", [".", ".."])
+def test_dot_repo_names_are_404(client, llm, name):
+    assert client.get(f"/scan/{name.replace('.', '%2E')}").status_code == 404
+    for path in ("/explain", "/generate-readme"):
+        assert client.post(path, json={"repo_name": name}).status_code == 404
+    assert client.post("/analyze", json={"question": "list files", "repo_name": name}).status_code == 404
+    assert llm == []
+
+
 # --- Symlinks ---
 
 @pytest.fixture(scope="module")

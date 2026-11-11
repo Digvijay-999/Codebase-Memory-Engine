@@ -41,7 +41,8 @@ def _get_repo_origin_url(repo_path: str) -> str:
 def _get_repo_path(repo_name: str) -> str:
     safe_name = os.path.basename(repo_name)
     repo_path = os.path.join(REPOS_DIR, safe_name)
-    if not os.path.exists(repo_path):
+    # basename keeps "." and "..", which would resolve to REPOS_DIR itself or its parent (the app source in Docker)
+    if safe_name in ("", ".", "..") or not os.path.exists(repo_path):
         raise HTTPException(
             status_code=404,
             detail=f"Repository '{repo_name}' not found."
