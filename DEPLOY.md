@@ -153,21 +153,34 @@ To update later, use these steps instead of `scripts/deploy.sh`, which builds on
 
 Tested on a `Standard_B2ats_v2` (x86_64, 2 vCPU, 1 GB RAM) with Ubuntu 24.04, using the low-memory steps above.
 
-- **Create the VM from Cloud Shell** (bash). The DNS name label gives you a free hostname, `<label>.<region>.cloudapp.azure.com`. Use it as `DOMAIN`, and you don't need a domain of your own:
+- **Region policy (Azure for Students):** the subscription's policy blocked several regions. To find a region that's allowed and offers one of the free-account sizes, list the policy's allowed locations, then check each one for the sizes:
 
   ```bash
-  az group create -n contextforge-rg -l <region>
-  az vm create -g contextforge-rg -n contextforge --image Ubuntu2404 --size Standard_B2ats_v2 \
-    --admin-username azureuser --ssh-key-values ~/.ssh/id_ed25519.pub \
-    --public-ip-sku Standard --public-ip-address-dns-name <label> --os-disk-size-gb 64
-  az vm open-port -g contextforge-rg -n contextforge --port 80,443 --priority 1010
+  az policy assignment list --disable-scope-strict-match -o json   # the allowed-locations parameter lists the regions
+  for LOC in <allowed regions>; do
+    echo "$LOC: $(az vm list-skus -l $LOC --resource-type virtualMachines \
+      --query "[?name=='Standard_B2ats_v2' || name=='Standard_B2pts_v2' || name=='Standard_B1s'].name" -o tsv | tr '\n' ' ')"
+  done
   ```
 
-  To add the label to an existing VM: Portal → the VM's public IP → Configuration → DNS name label.
-- **Region policy:** some subscriptions (for example Azure for Students) may only deploy to an allowed list of regions. If `az vm create` fails with a `RequestDisallowedBy...` policy error, pick a region from the list in the error message. The region is part of the DNS name, so choose it before you set the label.
+  That check picked India South Central (`indiasouthcentral`). `Standard_B2pts_v2` is Arm, so it would need arm64 images; `ship-images.sh` builds amd64, which suits `Standard_B2ats_v2`.
+- **Create the VM from Cloud Shell** (bash), as it was run for the live demo. The DNS name label gives a free hostname, `<label>.<region>.cloudapp.azure.com` (here `contextforge-dig.indiasouthcentral.cloudapp.azure.com`). Use it as `DOMAIN`, so no domain of your own is needed:
+
+  ```bash
+  RG=contextforge-rg; LOC=indiasouthcentral
+  az group create -n $RG -l $LOC
+  az vm create -g $RG -n contextforge -l $LOC \
+    --image Ubuntu2404 --size Standard_B2ats_v2 \
+    --admin-username azureuser --generate-ssh-keys \
+    --public-ip-sku Standard --public-ip-address-dns-name contextforge-dig \
+    --os-disk-size-gb 64 --storage-sku Premium_LRS
+  az vm open-port -g $RG -n contextforge --port 80,443 --priority 900
+  ```
+
+  `--generate-ssh-keys` keeps the key pair in Cloud Shell's `~/.ssh`. Download the private key to the machine you ssh from. To add a DNS label to an existing VM: Portal → the VM's public IP → Configuration → DNS name label.
 - **Network security group:** the VM's NSG must allow 22, 80 and 443, in addition to ufw (step 2). The Azure Ubuntu image has no extra iptables rules, so HTTPS worked with only ufw and the NSG.
 - **No temp disk:** the `*ats_v2` sizes have no resource disk, so the swapfile goes on the OS disk (`/swapfile`), as in the low-memory steps.
-- **Memory seen on 1 GB + 4 GB swap:** about 490 MB used and about 400 MB still available while answering a Chat question and generating a Docs report (backend about 270 MB, Caddy about 60 MB, nginx under 10 MB), with under 200 MB of swap in use. Indexing a large new repo embeds all of its chunks in memory and wasn't measured, so watch `free -h` the first time.
+- **Memory seen on 1 GB + 4 GB swap:** about 490 MB used and about 400 MB still available while answering a Chat question and generating a Docs report (backend about 270 MB, Caddy about 60 MB, nginx under 10 MB), with under 200 MB of swap in use. Indexing is the heavy part, because it embeds every chunk in memory. Re-indexing flask (123 files, 941 chunks) took 450 s on this VM, against 40 s on a desktop. RAM peaked at about 770 MB and swap at about 1.3 GB, with no OOM kill. For big repos, index on your own machine and restore the volumes (step 6), or resize the VM.
 - **From Windows:** Git Bash's `ssh`/`scp` accept the downloaded `.pem` key as is. `scripts/ship-images.sh` runs from Git Bash with Docker Desktop. A `backend/.env` saved with CRLF line endings is fine, because Compose strips the `\r`.
 
 ## Notes

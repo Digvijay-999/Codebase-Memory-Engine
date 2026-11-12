@@ -1,5 +1,7 @@
 # ContextForge
 
+**Live demo:** https://contextforge-dig.indiasouthcentral.cloudapp.azure.com
+
 ContextForge is an AI codebase memory engine. It indexes a Git repository so you can explore its code with repository-scoped semantic search, ask questions about implementation details, and generate architecture notes or a README.
 
 ## What it does
@@ -43,6 +45,10 @@ Open the frontend at [http://localhost:3000](http://localhost:3000). The API is 
 The backend image downloads the all-MiniLM-L6-v2 ONNX model during its build. Docker Compose stores the ChromaDB index and cloned repositories in named volumes so they persist across container restarts.
 
 To stop the app, run `docker compose down`. To also delete the stored index and cloned repositories, use `docker compose down -v`.
+
+## Deployment
+
+[DEPLOY.md](DEPLOY.md) covers production on one Docker host. Caddy serves HTTPS with automatic Let's Encrypt certificates and HSTS in front of nginx and the API. The guide includes firewall setup, backups and restores, and building images on your own machine for a 1 GB VM. The live demo runs on a 1 GB Azure VM.
 
 ## Local development
 

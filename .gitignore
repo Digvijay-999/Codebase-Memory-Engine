@@ -62,3 +62,4 @@ audit/
 
 # Local volume backups (tar of the named volumes)
 backups/
+.agents/gsd-core/
