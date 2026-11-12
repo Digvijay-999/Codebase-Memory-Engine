@@ -9,9 +9,10 @@ You need an Ubuntu 22.04/24.04 VM with 2 vCPU, 4 GB RAM and 20 GB disk or more, 
 ```bash
 sudo apt-get update && sudo apt-get install -y ca-certificates curl git
 curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker "$USER" && newgrp docker
-docker compose version
+sudo usermod -aG docker "$USER"
 ```
+
+Log out and back in so the `docker` group applies, then run `docker compose version`.
 
 ## 2. Firewall: allow 22, 80 and 443 only
 
@@ -25,6 +26,8 @@ sudo ufw enable
 sudo ufw status
 ```
 
+Also open 22, 80 and 443 in your cloud provider's firewall or security group; ufw alone isn't enough there. Some providers' Ubuntu images also ship iptables rules that block 80/443 even after ufw allows them, so check your provider's docs if HTTPS doesn't connect.
+
 Docker writes its own iptables rules for published ports, and those bypass ufw. That's safe here only because Caddy (80/443) is the only container that publishes ports. Don't add `ports:` to the other services.
 
 ## 3. Clone the repo
@@ -33,6 +36,8 @@ Docker writes its own iptables rules for published ports, and those bypass ufw. 
 git clone <your-repo-url> ~/contextforge
 cd ~/contextforge
 ```
+
+For a private repo, the server needs read access first: either add a read-only deploy key (`ssh-keygen -t ed25519`, add the public key under the repo's Settings → Deploy keys, then clone the `git@github.com:` URL), or run `gh auth login`.
 
 ## 4. Create the .env files
 
@@ -63,9 +68,11 @@ dig +short contextforge.example.com   # must print the server's IP
 
 ## 6. Restore the data
 
-Copy the two backup files from the old machine into `~/contextforge/backups/`, for example with `scp backups/*-20261111.tgz user@server:~/contextforge/backups/`. Then:
+Copy the two backup files from the old machine into `~/contextforge/backups/`, then restore them on the server:
 
 ```bash
+mkdir -p ~/contextforge/backups                                     # on the server
+scp backups/*-20261111.tgz user@server:~/contextforge/backups/      # on the old machine
 scripts/restore-volumes.sh backups/chroma_data-20261111.tgz backups/repos_data-20261111.tgz
 ```
 
