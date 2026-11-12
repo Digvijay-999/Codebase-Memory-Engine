@@ -157,7 +157,7 @@ A 1 GB VM can run the stack, but building the images there is slow and can run o
 
    This builds `contextforge-backend` and `contextforge-frontend` for linux/amd64 and streams them over ssh into `docker load` on the server. The image names are fixed in `docker-compose.yml`, so the server's checkout folder doesn't matter.
 
-3. In the server's `.env`, uncomment the "Small hosts" lines from `.env.example`: `EMBEDDING_BATCH_SIZE=8`, `MAX_FILES=300` and `MAX_REPO_MB=1`. The default batch of 64 makes indexing thrash swap, about 14× slower. The limits turn bigger repos away with a quick 413 instead of a UI timeout.
+3. In the server's `.env`, uncomment the "Small hosts" lines from `.env.example`: `EMBEDDING_BATCH_SIZE=8`, `MAX_FILES=300` and `MAX_REPO_MB=1`. The default batch of 64 makes indexing thrash swap, about 7× slower (express: 626 s vs 87 s). The limits turn bigger repos away with a quick 413 instead of a UI timeout.
 4. On the server, pull only the registry images (Caddy), then start without building:
 
    ```bash

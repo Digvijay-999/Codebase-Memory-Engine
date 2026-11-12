@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- Source for docs/assets/social-preview.png (1280x640). Render:
+     chrome --headless=new --window-size=1280,640 --hide-scrollbars --screenshot=social-preview.png social-preview.html -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ContextForge social preview</title>
+<style>
+  @font-face { font-family: 'Inter'; font-weight: 100 900; src: url(../../../frontend/public/fonts/inter-latin.woff2) format('woff2'); }
+  @font-face { font-family: 'Space Grotesk'; font-weight: 300 700; src: url(../../../frontend/public/fonts/space-grotesk-latin.woff2) format('woff2'); }
+  :root { --bg: #080B10; --border: #323A42; --text-primary: #F2F2F2; --text-secondary: #8C949C; --text-muted: #6F7680; }
+  html, body { margin: 0; width: 1280px; height: 640px; overflow: hidden; background: var(--bg); }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; font-family: 'Inter', system-ui, sans-serif; color: var(--text-primary); }
+  h1 { font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 400; font-size: 84px; letter-spacing: -0.03em; line-height: 1; margin: 0; }
+  p { font-size: 26px; line-height: 1.4; color: var(--text-secondary); margin: 24px 0 44px; max-width: 760px; text-align: center; text-wrap: balance; }
+  .crop { width: 720px; height: 232px; border: 1px solid var(--border); border-radius: 16px;
+          background: url(../hero.png) no-repeat; background-size: 720px 450px; background-position: 0 -74px; }
+</style>
+</head>
+<body>
+  <h1>ContextForge</h1>
+  <p>Ask questions about any GitHub repository and get answers that cite the actual code.</p>
+  <div class="crop" role="img" aria-label="ContextForge landing page"></div>
+</body>
+</html>

@@ -24,7 +24,7 @@ backend/
   models/all-MiniLM-L6-v2/ tokenizer/config tracked; model.onnx gitignored (download required)
   scripts/download_model.py
   repos/, chroma_db/      runtime data (gitignored)
-  test_*.py, test_rag.ps1, verify_audit.py, index_local_repo.py, inspect_chroma*.py, cleanup_chroma_legacy.py   manual scripts (see Testing)
+  scripts/manual/         manual scripts: test_*.py, test_rag.ps1, verify_audit.py, index_local_repo.py, inspect_chroma*.py, cleanup_chroma_legacy.py (see Testing)
 frontend/src/
   App.jsx                 lazy routes: / Landing, /dashboard, /chat, /docs
   services/api.js         the ONLY HTTP client (fetchWithTimeout + per-endpoint timeouts)
@@ -32,7 +32,8 @@ frontend/src/
   components/ui/AnimatedAiChat.tsx   chat UI, slash commands, quick actions (~900 lines)
   components/{sections,layout,graph,spline}/   landing/marketing + layout
   lib/                    markdownUtils (HTML→MD, repo link/image rewriting), utils (cn = clsx+twMerge), animations, mockData (landing only)
-.contextforge/, docs/     design notes / ADRs — partly STALE (see bottom)
+docs/assets/              README screenshots + social preview (docs/assets/src/ holds the preview's HTML)
+docs/archive/             old design notes — STALE (see bottom)
 ```
 
 ### Backend services
@@ -92,8 +93,7 @@ Docker: `docker compose up --build` (key via root `.env` or `backend/.env`); `do
 `backend/tests/` is a pytest suite (`python -m pytest -q` from `backend/`): health/repos/scan/search, 404/422, URL allowlist, clone limits, symlinks, rate limits and the LLM endpoints, with a throwaway `REPOS_DIR`/`CHROMA_DB_PATH`, a fake embedding model and a stubbed OpenRouter call. Symlink tests skip on Windows without symlink rights. CI (`.github/workflows/ci.yml`) runs pytest, frontend lint + build, and a docker build of both images. Also verify by running the app (`/health`, index a small repo such as `https://github.com/pallets/itsdangerous` (102 chunks, about 10 s on the live 1 GB host, inside its limits), then ask). Old manual scripts live in `backend/scripts/manual/` (run from `backend/`):
 - Need a running server: `python scripts/manual/test_api.py` (error paths; needs `requests`, not in requirements), `powershell scripts/manual/test_rag.ps1` (indexes two repos, checks source isolation). Both still target :8000.
 - In-process: `python scripts/manual/verify_audit.py` (FastAPI `TestClient` audit; uses the real model and data).
-- Chroma tools: `python inspect_chroma.py`, `python cleanup_chroma_legacy.py --dry-run` (omit `--dry-run` to delete), `python index_local_repo.py` (indexes `repos/codebase-memory-engine`).
-- Known broken: `scripts/manual/test_sim.py` imports `sentence_transformers` (removed); `test_rag_debug.py` calls `ask()` without the now-required `response` argument.
+- Chroma tools: `python scripts/manual/inspect_chroma.py`, `python scripts/manual/cleanup_chroma_legacy.py --dry-run` (omit `--dry-run` to delete), `python scripts/manual/index_local_repo.py` (indexes `repos/codebase-memory-engine`).
 - Debug-only endpoints for inspecting pipeline stages (404 unless `ENABLE_DEBUG_ENDPOINTS=true`; the UI uses none of them): `/clone`, `/content/{repo}`, `/chunks/{repo}` (first 5), `/embed` (first 10 dims), `/store/{repo}`. `APP_ENV=production` turns off `/docs`, `/redoc`, `/openapi.json`.
 - Timing: every pipeline endpoint logs `[PERF] op=...` and sets a `Server-Timing` header (visible in browser devtools).
 
@@ -124,4 +124,4 @@ Docker: `docker compose up --build` (key via root `.env` or `backend/.env`); `do
 
 ## Stale documentation
 
-`.contextforge/`, `docs/engineering-handbook/`, and root `HLD.md`/`LLD.md`/`PRD.md` (duplicates of `docs/`) partly describe older states — e.g. SentenceTransformer embeddings, a 16k context budget, 3-retry backoff. The root `chroma_db/` is an unused legacy store. Trust the code over these documents.
+`docs/archive/` (engineering handbook, HLD/LLD/PRD) partly describes older states — e.g. SentenceTransformer embeddings, a 16k context budget, 3-retry backoff. The root `chroma_db/` is an unused legacy store. Trust the code over these documents.

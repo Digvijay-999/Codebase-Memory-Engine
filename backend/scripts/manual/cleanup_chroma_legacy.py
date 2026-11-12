@@ -9,7 +9,7 @@ if sys.platform == "win32":
     sys.stderr.reconfigure(encoding='utf-8')
 
 # Ensure backend directory is in sys.path
-backend_dir = Path(__file__).resolve().parent
+backend_dir = Path(__file__).resolve().parents[2]  # scripts/manual/ -> backend/
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
