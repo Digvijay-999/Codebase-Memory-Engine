@@ -159,7 +159,7 @@ def store_repo(repo_name: str):
 @router.post("/search", dependencies=[search_limit])
 def search(request: SearchRequest, response: Response):
     t_start = time.perf_counter()
-    results = search_chunks(request.query, request.repo_name)
+    results = search_chunks(request.query, request.repo_name, **({"n_results": request.top_k} if request.top_k else {}))
     _require_indexed(results, request.repo_name)
     total_time = time.perf_counter() - t_start
 
@@ -298,8 +298,6 @@ def explain(request: RepoNameRequest, response: Response):
             except Exception:
                 pass
 
-    data_flow = "Client Requests -> FastAPI Routers -> Python Services -> LLM / ChromaDB Storage"
-    rag_pipeline = "Repository Scanning -> Document Chunking -> Embeddings -> ChromaDB Storage -> Semantic Search"
     
     important_files = [f for f in normalized_files if f.split('/')[-1] in ["main.py", "app.py", "package.json", "requirements.txt", "README.md", "Dockerfile"]]
 
@@ -316,8 +314,6 @@ def explain(request: RepoNameRequest, response: Response):
         "api_endpoints": api_endpoints[:25],
         "services": services[:20],
         "schemas": schemas[:20],
-        "data_flow": data_flow,
-        "rag_pipeline": rag_pipeline,
         "important_files": important_files
     }
 

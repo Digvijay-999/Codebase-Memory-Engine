@@ -19,7 +19,8 @@ import anyio
 import httpx
 from typing import Optional, Dict, Any
 from config.settings import (
-    LLM_DAILY_LIMIT, LLM_TOTAL_TIMEOUT_S, OPENROUTER_MODEL, OPENROUTER_FALLBACK_MODELS, OPENROUTER_MODEL_LONG, OPENROUTER_FALLBACK_MODELS_LONG
+    LLM_DAILY_LIMIT, LLM_TOTAL_TIMEOUT_S, OPENROUTER_MODEL, OPENROUTER_FALLBACK_MODELS, OPENROUTER_MODEL_LONG, OPENROUTER_FALLBACK_MODELS_LONG,
+    WHOLE_REPO_MAX_TOKENS,
 )
 
 logger = logging.getLogger(__name__)
@@ -125,7 +126,8 @@ async def _call_openrouter(prompt: str, timeout: float, whole_repo: bool = False
     # Optional OpenRouter fallback list (tried in order if the primary errors); keep it to :free ids to stay unbilled.
     fallbacks = [m.strip() for m in fallback_csv.split(",") if m.strip()]
     # Long whole-repo reports turn reasoning off (the primary reasons at "high" effort by default); /ask keeps model defaults.
-    body = {"reasoning": {"effort": "none"}} if whole_repo else {}
+    # The output cap keeps a verbose answer inside the deadline (an 11.8k-token flask report took 46 s).
+    body = {"reasoning": {"effort": "none"}, "max_tokens": WHOLE_REPO_MAX_TOKENS} if whole_repo else {}
     if fallbacks:
         body["models"] = [model_name, *fallbacks]
     extra = {"extra_body": body} if body else {}
@@ -241,7 +243,15 @@ Never say "Based on the provided context."
 
 Never say "According to the repository."
 
-Write confidently.
+Describe only what the repository metadata and the code below show. Do not guess.
+When a section has nothing in the provided code (for example no storage layer, no AI pipeline, no API layer),
+write one plain line such as "Not visible in the provided code." and move on.
+Name the file for each key claim, for example (`src/app/routes.py`).
+Only name classes, functions and dependencies that appear in the code or metadata below; the code may differ from
+older versions you know. Copy numbers from the metadata exactly.
+Base Strengths, Risks, Technical Debt and Recommendations on specific code you were shown, not generic advice.
+Keep the whole report under 1,500 words: per section 2-5 sentences, a short list or a small table.
+List at most 8 core components and at most 5 items in any list.
 
 Use engineering terminology.
 
@@ -298,21 +308,14 @@ Rules
 4. For architecture flows use fenced code blocks:
 
 ```text
-Client
+Caller
    │
    ▼
-FastAPI
+Entry point
    ▼
-Repository Service
-   ▼
-Chunk Service
-   ▼
-Embedding Service
-   ▼
-ChromaDB
-   ▼
-Gemini
+Core module
 ```
+Use the repository's real component names, never these placeholders.
 
 - Explain WHY components exist.
 

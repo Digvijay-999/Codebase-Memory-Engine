@@ -1,0 +1,88 @@
+{
+  "repo_name": "flask",
+  "repo_url": "https://github.com/pallets/flask",
+  "hit_rule": "A question is a hit at k if one of the first k chunks returned by /search lies in a gold file and overlaps the body of one of that file's gold definitions (located with Python's ast).",
+  "questions": [
+    {
+      "question": "How does Flask register URL routes and dispatch a request to a view function?",
+      "gold": [
+        {"file": "src/flask/sansio/scaffold.py", "symbol": "Scaffold.route"},
+        {"file": "src/flask/sansio/app.py", "symbol": "App.add_url_rule"},
+        {"file": "src/flask/app.py", "symbol": "Flask.dispatch_request"},
+        {"file": "src/flask/app.py", "symbol": "Flask.full_dispatch_request"}
+      ]
+    },
+    {
+      "question": "How do blueprints work and how is a blueprint registered on an app?",
+      "gold": [
+        {"file": "src/flask/sansio/blueprints.py", "symbol": "Blueprint.register"},
+        {"file": "src/flask/sansio/app.py", "symbol": "App.register_blueprint"},
+        {"file": "src/flask/sansio/blueprints.py", "symbol": "BlueprintSetupState"}
+      ]
+    },
+    {
+      "question": "How is the request context pushed and popped for each request?",
+      "gold": [
+        {"file": "src/flask/ctx.py", "symbol": "AppContext.push"},
+        {"file": "src/flask/ctx.py", "symbol": "AppContext.pop"}
+      ]
+    },
+    {
+      "question": "How does Flask load configuration from a file, an object or environment variables?",
+      "gold": [
+        {"file": "src/flask/config.py", "symbol": "Config.from_pyfile"},
+        {"file": "src/flask/config.py", "symbol": "Config.from_object"},
+        {"file": "src/flask/config.py", "symbol": "Config.from_envvar"},
+        {"file": "src/flask/config.py", "symbol": "Config.from_prefixed_env"}
+      ]
+    },
+    {
+      "question": "How do I register a custom error handler, and how does Flask choose which handler to call?",
+      "gold": [
+        {"file": "src/flask/sansio/scaffold.py", "symbol": "Scaffold.errorhandler"},
+        {"file": "src/flask/sansio/scaffold.py", "symbol": "Scaffold.register_error_handler"},
+        {"file": "src/flask/sansio/app.py", "symbol": "App._find_error_handler"},
+        {"file": "src/flask/app.py", "symbol": "Flask.handle_user_exception"}
+      ]
+    },
+    {
+      "question": "How are sessions stored in cookies and signed?",
+      "gold": [
+        {"file": "src/flask/sessions.py", "symbol": "SecureCookieSessionInterface.get_signing_serializer"},
+        {"file": "src/flask/sessions.py", "symbol": "SecureCookieSessionInterface.open_session"},
+        {"file": "src/flask/sessions.py", "symbol": "SecureCookieSessionInterface.save_session"}
+      ]
+    },
+    {
+      "question": "How does render_template find and render a Jinja template?",
+      "gold": [
+        {"file": "src/flask/templating.py", "symbol": "render_template"},
+        {"file": "src/flask/templating.py", "symbol": "_render"},
+        {"file": "src/flask/templating.py", "symbol": "DispatchingJinjaLoader"}
+      ]
+    },
+    {
+      "question": "How does the flask command line tool find the application to run?",
+      "gold": [
+        {"file": "src/flask/cli.py", "symbol": "find_best_app"},
+        {"file": "src/flask/cli.py", "symbol": "locate_app"},
+        {"file": "src/flask/cli.py", "symbol": "ScriptInfo.load_app"}
+      ]
+    },
+    {
+      "question": "How does the test client send requests to the app in tests?",
+      "gold": [
+        {"file": "src/flask/testing.py", "symbol": "FlaskClient.open"},
+        {"file": "src/flask/app.py", "symbol": "Flask.test_client"}
+      ]
+    },
+    {
+      "question": "How does Flask turn a returned dict into a JSON response?",
+      "gold": [
+        {"file": "src/flask/json/provider.py", "symbol": "DefaultJSONProvider.response"},
+        {"file": "src/flask/json/__init__.py", "symbol": "jsonify"},
+        {"file": "src/flask/app.py", "symbol": "Flask.make_response"}
+      ]
+    }
+  ]
+}

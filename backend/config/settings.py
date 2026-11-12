@@ -29,6 +29,8 @@ TOP_K_RESULTS = int(os.getenv("TOP_K_RESULTS", "8"))
 # Total limit for one LLM operation (attempts, retry, fallback). It can only shorten the per-endpoint caps
 # (60s /ask, 85s whole-repo), which stay below the UI timeouts in frontend/src/services/api.js.
 LLM_TOTAL_TIMEOUT_S = float(os.getenv("LLM_TOTAL_TIMEOUT_S", "85"))
+# Output cap for whole-repo reports (analyze/explain/readme); about 5k tokens fits the 45 s report target.
+WHOLE_REPO_MAX_TOKENS = int(os.getenv("WHOLE_REPO_MAX_TOKENS", "5000"))
 
 # Indexing & File limits
 MAX_FILE_SIZE_BYTES = int(os.getenv("MAX_FILE_SIZE_BYTES", str(500 * 1024))) # 500 KB limit

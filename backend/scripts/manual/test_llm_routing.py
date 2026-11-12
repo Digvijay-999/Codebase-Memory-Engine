@@ -26,7 +26,7 @@ anyio.run(llm._call_openrouter, "q", 85.0, True)    # whole-repo
 ask, whole = calls
 assert ask["model"] == "primary:free" and ask["extra_body"] == {"models": ["primary:free", "p-fb:free"]}, ask
 assert whole["model"] == "long:free", whole
-assert whole["extra_body"] == {"reasoning": {"effort": "none"}, "models": ["long:free", "l-fb1:free", "l-fb2:free"]}, whole
+assert whole["extra_body"] == {"reasoning": {"effort": "none"}, "max_tokens": 5000, "models": ["long:free", "l-fb1:free", "l-fb2:free"]}, whole
 
 os.environ["OPENROUTER_MODEL_LONG"] = ""  # empty: whole-repo uses the primary chain
 anyio.run(llm._call_openrouter, "q", 85.0, True)

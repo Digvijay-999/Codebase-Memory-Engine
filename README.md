@@ -52,7 +52,7 @@ flowchart TD
     end
 
     subgraph Report["Docs: POST /explain"]
-        W["Read files from disk<br/>8,000-char budget"] --> L2["OpenRouter<br/>faster model + fallbacks, reasoning off<br/>85 s total deadline"]
+        W["Read files from disk: README,<br/>entry points, most-imported modules<br/>24,000-char budget"] --> L2["OpenRouter<br/>faster model + fallbacks, reasoning off<br/>85 s total deadline"]
     end
 
     F --> G
@@ -65,7 +65,7 @@ flowchart TD
 2. **Scan and chunk.** Source files are cut into 800-character windows. Each chunk starts with its file path and the names of the functions and classes in it.
 3. **Embed.** A MiniLM model runs on ONNX Runtime on the CPU (no PyTorch). Vectors go into one ChromaDB collection, tagged with the repo name.
 4. **Ask.** The question is embedded, the 8 nearest chunks from that repo are retrieved, and the model is told to cite files and to give a partial answer rather than refuse.
-5. **Report.** The Docs page skips retrieval. It reads the most important files from disk and sends them to a faster model.
+5. **Report.** The Docs page skips retrieval. It reads the README, the entry points and the modules other files import most, and sends them to a faster model. The prompt tells it to describe only that code and to say so when something isn't visible.
 
 ## Tech stack
 

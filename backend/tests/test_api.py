@@ -34,6 +34,13 @@ def test_search_returns_only_this_repos_chunks(client, indexed_demo):
     assert {m["file"] for m in metadatas} <= FILES
 
 
+def test_search_top_k_is_optional_and_bounded(client, indexed_demo):
+    one = client.post("/search", json={"query": "register blueprint", "repo_name": indexed_demo, "top_k": 1})
+    assert one.status_code == 200 and len(one.json()["results"]["metadatas"]) == 1
+    assert client.post("/search", json={"query": "x", "repo_name": indexed_demo, "top_k": 21}).status_code == 422
+    assert client.post("/search", json={"query": "x", "repo_name": indexed_demo, "top_k": 0}).status_code == 422
+
+
 @pytest.mark.parametrize("method, path, body", [
     ("get", "/scan/no-such-repo", None),
     ("get", "/content/no-such-repo", None),
