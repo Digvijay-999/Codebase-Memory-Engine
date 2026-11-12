@@ -90,12 +90,18 @@ This runs git pull, builds, runs `up -d`, waits until every container is healthy
 
 ```bash
 D=contextforge.example.com
-curl -fsS https://$D/api/health        # "chroma_collection_documents": 944 after the restore
-curl -fsS https://$D/api/repos         # Hello-World, Spoon-Knife, flask
+curl -fsS https://$D/api/health        # "chroma_collection_documents": at least the backup's count (below)
+curl -fsS https://$D/api/repos         # the repos in the backup, plus any indexed since
 curl -s -o /dev/null -w '%{http_code}\n' https://$D/api/docs          # 404
 curl -s -o /dev/null -w '%{http_code}\n' https://$D/api/content/flask # 404 (debug route)
 curl -sI https://$D/ | grep -iE 'strict-transport|content-security|x-frame'
 docker compose ps                      # backend and frontend healthy, caddy up
+```
+
+The chunk count only grows as visitors index new repos, so it should never be lower than the restored backup's count. To read the count stored in a backup archive (this uses the backend image's Python, so it needs no extra tools):
+
+```bash
+docker run --rm -i --entrypoint python contextforge-backend -c 'import sqlite3,sys,tarfile,tempfile; t=tarfile.open(fileobj=sys.stdin.buffer,mode="r|gz"); d=tempfile.mkdtemp(); m=next(m for m in t if m.name.endswith("chroma.sqlite3")); t.extract(m,d,filter="data"); print(sqlite3.connect(d+"/"+m.name).execute("select count(*) from embeddings").fetchone()[0])' < backups/chroma_data-20261111.tgz
 ```
 
 Then open `https://contextforge.example.com`, ask a question in Chat and open the Docs page. Logs: `docker compose logs -f backend` (rotated, 5 × 10 MB per container).

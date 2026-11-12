@@ -1,9 +1,15 @@
 // Same origin by default (nginx, or the Vite dev proxy, forwards /api to the backend); VITE_API_URL overrides it.
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const DEFAULT_TIMEOUT = 120000; // 120 seconds
+const AI_TIMEOUT_MESSAGE = 'The AI provider is under high demand; please retry.';
 
 const fetchWithTimeout = async (url, options = {}) => {
-  const { timeout = DEFAULT_TIMEOUT, signal: externalSignal, ...fetchOptions } = options;
+  const {
+    timeout = DEFAULT_TIMEOUT,
+    timeoutMessage = 'The server took too long to respond; please retry.',
+    signal: externalSignal,
+    ...fetchOptions
+  } = options;
   const controller = new AbortController();
 
   let externalAbortHandler = null;
@@ -45,7 +51,7 @@ const fetchWithTimeout = async (url, options = {}) => {
   } catch (error) {
     if (error.name === 'AbortError' || controller.signal.aborted) {
       if (timedOut) {
-        throw new Error(`Request timed out after ${Math.round(timeout / 1000)}s. The AI provider is under high demand; please retry.`, { cause: error });
+        throw new Error(`Request timed out after ${Math.round(timeout / 1000)}s. ${timeoutMessage}`, { cause: error });
       }
       throw new Error('Request was cancelled.', { cause: error });
     }
@@ -65,6 +71,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repo_url: repoUrl }),
       timeout: 300000, // 5 minutes for indexing
+      timeoutMessage: 'Indexing took too long. Try a smaller repository.',
       ...options
     });
   },
@@ -83,6 +90,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question, repo_name: repoName }),
       timeout: 90000, // 90 seconds for AI answers (backend limit: 60s)
+      timeoutMessage: AI_TIMEOUT_MESSAGE,
       ...options
     });
   },
@@ -93,6 +101,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question, repo_name: repoName }),
       timeout: 110000, // 110 seconds for analysis (backend limit: 85s)
+      timeoutMessage: AI_TIMEOUT_MESSAGE,
       ...options
     });
   },
@@ -103,6 +112,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repo_name: repoName }),
       timeout: 110000, // 110 seconds for architecture report (backend limit: 85s)
+      timeoutMessage: AI_TIMEOUT_MESSAGE,
       ...options
     });
   },
@@ -113,6 +123,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repo_name: repoName }),
       timeout: 110000, // 110 seconds for readme (backend limit: 85s)
+      timeoutMessage: AI_TIMEOUT_MESSAGE,
       ...options
     });
   },
