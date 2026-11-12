@@ -129,7 +129,7 @@ def test_clone_timeout_is_deleted(client, monkeypatch):
 def test_repo_count_limit(client, no_git, demo_repo, monkeypatch):
     monkeypatch.setattr(repo_service, "MAX_REPOS", len(os.listdir(REPOS_DIR)))
     r = client.post("/clone", json={"repo_url": "https://github.com/octocat/one-too-many"})
-    assert r.status_code == 409 and "limit" in r.json()["detail"]
+    assert r.status_code == 409 and "chat with the existing repositories" in r.json()["detail"]
 
 
 # --- Debug routes ---

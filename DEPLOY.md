@@ -124,6 +124,17 @@ crontab -e
 
 Each run stops the backend for a few seconds while it copies the data. It writes `backups/<volume>-<UTC time>.tgz` and deletes backups older than 14 days. Copy them off the server regularly (for example `rsync` to another machine). To restore one, use step 6, then `scripts/deploy.sh`.
 
+## 11. Remove a repo
+
+Visitors can't remove repos. When the demo reaches `MAX_REPOS` (default 20), new repos are refused with a message that the demo is full. To make room, run this on the server:
+
+```bash
+scripts/remove-repo.sh --dry-run express   # shows the chunk count and whether the clone exists; changes nothing
+scripts/remove-repo.sh express             # asks you to type the name, then backs up and removes
+```
+
+It refuses the demo's original repos (`Hello-World`, `Spoon-Knife`, `flask`) unless you pass `--force`. A real run asks you to type the repo name. It then stops the backend, runs `scripts/backup-volumes.sh`, deletes the clone and the repo's chunks, and starts the backend again. Downtime is a few seconds. To undo, restore the backup it printed (step 6).
+
 ## Low-memory hosts (1 GB)
 
 A 1 GB VM can run the stack, but building the images there is slow and can run out of memory. Add swap, build on your own machine, and ship the images.

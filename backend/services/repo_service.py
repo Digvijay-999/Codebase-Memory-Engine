@@ -58,7 +58,7 @@ def clone_repository(repo_url: str):
     try:
         repos = [d for d in os.listdir(REPOS_DIR) if os.path.isdir(os.path.join(REPOS_DIR, d)) and not d.startswith(TMP_PREFIX)]
         if len(repos) >= MAX_REPOS:
-            raise HTTPException(status_code=409, detail=f"The repository limit ({MAX_REPOS}) is reached. Remove a repository before adding another.")
+            raise HTTPException(status_code=409, detail="This demo has reached its repository limit. You can still chat with the existing repositories.")
 
         # Clone into a temp folder on the same volume and rename it into place: a partial clone is never visible as a repo.
         tmp = tempfile.mkdtemp(prefix=f"{TMP_PREFIX}{repo_name}-", dir=REPOS_DIR)
