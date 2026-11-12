@@ -8,9 +8,9 @@ Ask questions about any GitHub repository and get answers that cite the actual c
 [![Python 3.11](https://img.shields.io/badge/python-3.11-111111?style=flat-square&logo=python&logoColor=white)](backend/requirements.txt)
 [![React 19](https://img.shields.io/badge/react-19-111111?style=flat-square&logo=react&logoColor=white)](frontend/package.json)
 
-**[Live demo](https://contextforge-dig.indiasouthcentral.cloudapp.azure.com)** · **[Video walkthrough](https://youtu.be/h9O256LnUMYL)** · **[Deployment guide](DEPLOY.md)**
+**[Live demo](https://contextforge-dig.indiasouthcentral.cloudapp.azure.com)** · **[Video walkthrough](https://youtu.be/h9O256LnUMY)** · **[Deployment guide](DEPLOY.md)**
 
-<!-- TODO(owner): add docs/assets/demo.gif and replace the image below with it. -->
+<!-- LAUNCH_VIDEO -->
 ![ContextForge landing page](docs/assets/hero.png)
 
 ## What it does
@@ -157,7 +157,7 @@ docker-compose.yml, compose.prod.yml, Caddyfile
 
 ## Testing
 
-- `cd backend && python -m pytest -q`: 64 tests covering the API, the URL allowlist, clone limits, symlinks, rate limits and the LLM endpoints with OpenRouter stubbed. On Windows 61 pass and 3 symlink tests are skipped.
+- `cd backend && python -m pytest -q`: 70 tests covering the API, the URL allowlist, clone limits, symlinks, rate limits and the LLM endpoints with OpenRouter stubbed. On Windows 67 pass and 3 symlink tests are skipped.
 - `cd frontend && npm run lint && npm run build`
 - [CI](.github/workflows/ci.yml) runs both on every push and also builds both Docker images.
 
@@ -178,4 +178,4 @@ Next:
 
 MIT, see [LICENSE](LICENSE).
 
-Built by **Digvijay**. [GitHub](https://github.com/Digvijay-999) · [LinkedIn](www.linkedin.com/in/digvijay-patil-732035379)
+Built by **Digvijay**. [GitHub](https://github.com/Digvijay-999) · [LinkedIn](https://www.linkedin.com/in/digvijay-patil-732035379)
