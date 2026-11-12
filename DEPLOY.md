@@ -2,7 +2,7 @@
 
 Production is `docker-compose.yml` plus `compose.prod.yml`. Caddy terminates HTTPS for your domain (automatic Let's Encrypt certificates, HSTS) and is the only container with published ports. The backend runs with `APP_ENV=production`, so `/docs` is off, and debug routes are off.
 
-You need an Ubuntu 22.04/24.04 VM with 2 vCPU, 4 GB RAM and 20 GB disk or more, a domain you control, and an OpenRouter API key. Commands run as a normal sudo user.
+You need an Ubuntu 22.04/24.04 VM with 2 vCPU, 4 GB RAM and 20 GB disk or more (1 GB RAM works, see [Low-memory hosts](#low-memory-hosts-1-gb)), a domain you control, and an OpenRouter API key. Commands run as a normal sudo user.
 
 ## 1. Install Docker
 
@@ -117,6 +117,37 @@ crontab -e
 ```
 
 Each run stops the backend for a few seconds while it copies the data. It writes `backups/<volume>-<UTC time>.tgz` and deletes backups older than 14 days. Copy them off the server regularly (for example `rsync` to another machine). To restore one, use step 6, then `scripts/deploy.sh`.
+
+## Low-memory hosts (1 GB)
+
+A 1 GB VM can run the stack, but building the images there is slow and can run out of memory. Add swap, build on your own machine, and ship the images.
+
+1. Add a 4 GB swapfile that survives reboots, and make the kernel prefer RAM:
+
+   ```bash
+   sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile
+   sudo mkswap /swapfile && sudo swapon /swapfile
+   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+   echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/99-swappiness.conf && sudo sysctl --system
+   free -h
+   ```
+
+2. On your machine (Docker, bash and ssh; Git Bash works on Windows), from the repo root:
+
+   ```bash
+   scripts/ship-images.sh user@server -i ~/.ssh/key.pem
+   ```
+
+   This builds `contextforge-backend` and `contextforge-frontend` for linux/amd64 and streams them over ssh into `docker load` on the server. The image names are fixed in `docker-compose.yml`, so the server's checkout folder doesn't matter.
+
+3. On the server, pull only the registry images (Caddy), then start without building:
+
+   ```bash
+   docker compose pull --ignore-buildable
+   docker compose up -d --no-build --wait --wait-timeout 300
+   ```
+
+To update later, use these steps instead of `scripts/deploy.sh`, which builds on the server: run `git pull` on the server, run `ship-images.sh` from your machine, then run `docker compose up -d --no-build --wait`.
 
 ## Notes
 
