@@ -8,7 +8,7 @@ Ask questions about any GitHub repository and get answers that cite the actual c
 [![Python 3.11](https://img.shields.io/badge/python-3.11-111111?style=flat-square&logo=python&logoColor=white)](backend/requirements.txt)
 [![React 19](https://img.shields.io/badge/react-19-111111?style=flat-square&logo=react&logoColor=white)](frontend/package.json)
 
-**[Live demo](https://contextforge-dig.indiasouthcentral.cloudapp.azure.com)** · **[Video walkthrough](VIDEO_URL)** · **[Deployment guide](DEPLOY.md)**
+**[Live demo](https://contextforge-dig.indiasouthcentral.cloudapp.azure.com)** · **[Video walkthrough](https://youtu.be/h9O256LnUMYL)** · **[Deployment guide](DEPLOY.md)**
 
 <!-- TODO(owner): add docs/assets/demo.gif and replace the image below with it. -->
 ![ContextForge landing page](docs/assets/hero.png)
