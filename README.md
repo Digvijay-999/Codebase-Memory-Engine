@@ -82,11 +82,17 @@ flowchart TD
 
 **Docs report: 129 s to 10–32 s.** The report timed out in the UI at 129 s. Diagnosis: token throughput of the model. Fix: whole-repo prompts go to a faster model with reasoning turned off. *Measured:* `/explain` wall time on the live server before and after the change (commit `37a2af6`). The run for the screenshot above took 12 s.
 
-**Retrieval hit rate on flask.** Top-5: 7/10 → 9/10. Top-10: 8/10 → 10/10. Each chunk now starts with its file path and the symbols it defines, and each answer uses 8 chunks instead of 5. *Measured:* 10 questions about flask, each with the file that answers it. A hit means that file is among the top k retrieved chunks (commit `c188f19`).
+**Retrieval hit rate on flask.** Top-5: 7/10 → 9/10. Top-10: 8/10 → 10/10. Each chunk now starts with its file path and the symbols it defines, and each answer uses 8 chunks instead of 5. *Measured:* 10 questions about flask ([docs/eval/flask_questions.json](docs/eval/flask_questions.json)), each with the functions that answer it. A hit means one of the top k chunks overlaps the body of one of those functions, located with Python's `ast` (commit `c188f19`). On 2026-11-13 the live index scored top-5 9/10, top-8 9/10, top-10 10/10. To reproduce, point the script at a backend and a checkout of the indexed commit:
+
+```bash
+cd backend
+python scripts/eval_retrieval.py --base-url http://127.0.0.1:8001 --source repos/flask
+```
 
 **Indexing on a 1 GB VM: about 7x faster.** express (1,084 chunks) took 626 s with an embedding batch of 64. The CPU sat about 70% in I/O wait because it was swapping. With a batch of 8 it took 87 s (1.7 → 12.5 chunks/s). *Measured:* wall time of `/index` on the live VM, with memory, swap and I/O wait watched during the run ([DEPLOY.md](DEPLOY.md)). Re-indexing flask for the screenshot above took 78 s for 941 chunks.
 
 **A real total deadline on LLM calls.** The SDK timeout only covered single reads, so a slow response plus a retry and the fallback models could run past the browser's timeout. Every call, including the retry and the fallback models, now runs inside one `anyio.fail_after` deadline: 60 s for chat, 85 s for reports. On expiry the upstream request is cancelled and the API returns 504, before the browser's own timeout (90 s / 110 s).
+
 
 ## Security
 
