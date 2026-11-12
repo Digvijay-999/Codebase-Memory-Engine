@@ -194,10 +194,11 @@ def ask_llm(question: str, context: str):
     prompt = f"""
 You are an expert software engineer.
 
-Answer ONLY using the provided repository context.
+Answer using ONLY the repository context below: the README and code chunks, each starting with its file path
+and the symbols it defines. Cite the files and functions you rely on. Never invent code, files or behavior.
 
-If the answer is not in the context, say:
-"I couldn't find that in the repository."
+If the context answers the question only in part, answer that part from the code shown and say plainly
+what is missing. Reply "I couldn't find that in the repository." only if nothing in the context is relevant.
 
 Repository Context:
 

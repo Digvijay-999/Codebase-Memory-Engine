@@ -25,7 +25,7 @@ OPENROUTER_FALLBACK_MODELS = os.getenv("OPENROUTER_FALLBACK_MODELS", "cohere/nor
 # the primary is too slow for long reports. Set OPENROUTER_MODEL_LONG= (empty) to use the primary instead.
 OPENROUTER_MODEL_LONG = os.getenv("OPENROUTER_MODEL_LONG", "cohere/north-mini-code:free")
 OPENROUTER_FALLBACK_MODELS_LONG = os.getenv("OPENROUTER_FALLBACK_MODELS_LONG", "nvidia/nemotron-3.5-lightning:free,nvidia/nemotron-3-ultra-550b-a55b:free")
-TOP_K_RESULTS = int(os.getenv("TOP_K_RESULTS", "5"))
+TOP_K_RESULTS = int(os.getenv("TOP_K_RESULTS", "8"))
 # Total limit for one LLM operation (attempts, retry, fallback). It can only shorten the per-endpoint caps
 # (60s /ask, 85s whole-repo), which stay below the UI timeouts in frontend/src/services/api.js.
 LLM_TOTAL_TIMEOUT_S = float(os.getenv("LLM_TOTAL_TIMEOUT_S", "85"))

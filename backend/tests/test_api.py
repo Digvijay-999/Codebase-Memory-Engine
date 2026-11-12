@@ -69,6 +69,7 @@ def test_ask_answers_from_retrieved_chunks(client, indexed_demo, llm):
     assert body["success"] is True and body["answer"] == "stub answer (rag)"
     assert "README.md" in body["sources"]
     assert "register_blueprint" in llm[-1] and "How is the blueprint registered?" in llm[-1]
+    assert "# File: app.py\n# Symbols: create_app" in llm[-1]  # chunks tell the model where they come from
 
 
 @pytest.mark.parametrize("path, body, key", [
