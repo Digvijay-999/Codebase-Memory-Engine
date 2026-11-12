@@ -178,4 +178,4 @@ Next:
 
 MIT, see [LICENSE](LICENSE).
 
-Built by **Digvijay**. [GitHub](https://github.com/Digvijay-999) · [LinkedIn](LINKEDIN_URL)
+Built by **Digvijay**. [GitHub](https://github.com/Digvijay-999) · [LinkedIn](www.linkedin.com/in/digvijay-patil-732035379)
