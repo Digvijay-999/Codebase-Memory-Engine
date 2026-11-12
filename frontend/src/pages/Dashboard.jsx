@@ -183,7 +183,7 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="text-xs text-text-secondary space-y-1 bg-bg border border-border rounded-lg p-4">
-                  <p>This usually takes between 30–90 seconds depending on repository size.</p>
+                  <p>Small repositories take about 10 seconds; the largest ones the live demo accepts take about 90 seconds.</p>
                   <p>Please keep this tab open while indexing completes.</p>
                 </div>
               </motion.div>
@@ -215,7 +215,7 @@ export default function Dashboard() {
                     />
                     <p className="text-xs text-text-muted mt-2 pt-1 leading-relaxed">
                       Connect a public GitHub repository to build an AI workspace.<br/>
-                      Initial indexing usually takes 30–90 seconds depending on repository size.
+                      Indexing takes about 10–90 seconds. The live demo accepts repositories up to 300 files and 1 MB.
                     </p>
                   </div>
 

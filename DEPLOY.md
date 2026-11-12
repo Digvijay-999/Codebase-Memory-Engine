@@ -140,7 +140,8 @@ A 1 GB VM can run the stack, but building the images there is slow and can run o
 
    This builds `contextforge-backend` and `contextforge-frontend` for linux/amd64 and streams them over ssh into `docker load` on the server. The image names are fixed in `docker-compose.yml`, so the server's checkout folder doesn't matter.
 
-3. On the server, pull only the registry images (Caddy), then start without building:
+3. In the server's `.env`, uncomment the "Small hosts" lines from `.env.example`: `EMBEDDING_BATCH_SIZE=8`, `MAX_FILES=300` and `MAX_REPO_MB=1`. The default batch of 64 makes indexing thrash swap, about 14× slower. The limits turn bigger repos away with a quick 413 instead of a UI timeout.
+4. On the server, pull only the registry images (Caddy), then start without building:
 
    ```bash
    docker compose pull --ignore-buildable
@@ -180,7 +181,7 @@ Tested on a `Standard_B2ats_v2` (x86_64, 2 vCPU, 1 GB RAM) with Ubuntu 24.04, us
   `--generate-ssh-keys` keeps the key pair in Cloud Shell's `~/.ssh`. Download the private key to the machine you ssh from. To add a DNS label to an existing VM: Portal → the VM's public IP → Configuration → DNS name label.
 - **Network security group:** the VM's NSG must allow 22, 80 and 443, in addition to ufw (step 2). The Azure Ubuntu image has no extra iptables rules, so HTTPS worked with only ufw and the NSG.
 - **No temp disk:** the `*ats_v2` sizes have no resource disk, so the swapfile goes on the OS disk (`/swapfile`), as in the low-memory steps.
-- **Memory seen on 1 GB + 4 GB swap:** about 490 MB used and about 400 MB still available while answering a Chat question and generating a Docs report (backend about 270 MB, Caddy about 60 MB, nginx under 10 MB), with under 200 MB of swap in use. Indexing is the heavy part, because it embeds every chunk in memory. Re-indexing flask (123 files, 941 chunks) took 450 s on this VM, against 40 s on a desktop. RAM peaked at about 770 MB and swap at about 1.3 GB, with no OOM kill. For big repos, index on your own machine and restore the volumes (step 6), or resize the VM.
+- **Memory seen on 1 GB + 4 GB swap:** about 490 MB used and about 400 MB still available while answering a Chat question and generating a Docs report (backend about 270 MB, Caddy about 60 MB, nginx under 10 MB), with under 200 MB of swap in use. Indexing is the heavy part. With the default `EMBEDDING_BATCH_SIZE=64`, express (1,084 chunks) took 626 s: the CPU sat about 70% in I/O wait, swapping, RAM peaked at 827 MB and swap at 1.5 GB. The browser gave up at 300 s while the backend kept going. With `EMBEDDING_BATCH_SIZE=8`, express took 87 s and itsdangerous (102 chunks) took 10 s. RAM peaked at 618 MB and swap at about 250 MB, with no OOM kill. For repos over the demo limits, index on your own machine and restore the volumes (step 6), or resize the VM.
 - **From Windows:** Git Bash's `ssh`/`scp` accept the downloaded `.pem` key as is. `scripts/ship-images.sh` runs from Git Bash with Docker Desktop. A `backend/.env` saved with CRLF line endings is fine, because Compose strips the `\r`.
 
 ## Notes
