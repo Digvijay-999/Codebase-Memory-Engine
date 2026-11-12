@@ -40,7 +40,7 @@ flowchart TD
     N --> F[FastAPI]
 
     subgraph Index["Index: POST /index"]
-        G["git clone --depth 1<br/>github.com only"] --> S["Scan<br/>skip symlinks, lockfiles, files over 500 KB"]
+        G["Shallow git clone<br/>github.com only"] --> S["Scan<br/>skip symlinks, lockfiles, files over 500 KB"]
         S --> K["Chunk: 800 chars, 100 overlap<br/>header: file path + symbol names"]
         K --> E["Embed: all-MiniLM-L6-v2<br/>ONNX Runtime on CPU, 384-d"]
         E --> D[("ChromaDB<br/>tagged with repo_name")]
