@@ -1,0 +1,9 @@
+# Public entry point in compose.prod.yml: automatic HTTPS for $DOMAIN, then the nginx frontend.
+# Caddy replaces any client-sent X-Forwarded-For with the real client IP, which nginx trusts from Caddy only.
+{$DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy frontend:80
+}

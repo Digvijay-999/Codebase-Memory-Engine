@@ -19,6 +19,8 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # The image renders templates/*.template into conf.d/ with envsubst at startup.
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 ENV BACKEND_URL=http://backend:8000
+# Peer trusted to set X-Forwarded-For; compose.prod.yml sets it to Caddy's IP.
+ENV REAL_IP_FROM=127.0.0.1
 # The CSP allows the origin of a VITE_API_URL override (see api-origin.envsh).
 ARG VITE_API_URL
 ENV VITE_API_URL=${VITE_API_URL}

@@ -1,0 +1,51 @@
+# Production on a single Docker host, layered on docker-compose.yml. Set in .env (see DEPLOY.md):
+#   COMPOSE_FILE=docker-compose.yml:compose.prod.yml   DOMAIN=your.domain
+# Caddy is the only service that publishes ports; it terminates HTTPS and proxies to nginx.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  backend:
+    container_name: !reset null  # project-scoped names, so scripts and a second stack never clash
+    ports: !reset []
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      - APP_ENV=production
+      - ENABLE_DEBUG_ENDPOINTS=false
+
+  frontend:
+    container_name: !reset null
+    ports: !reset []
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      # nginx takes the client IP from X-Forwarded-For only when the request comes from Caddy.
+      - REAL_IP_FROM=${CADDY_IP:-172.30.240.20}
+
+  caddy:
+    image: caddy:2.11.9-alpine@sha256:0bbb055bda6793c999bde78b1b5ce3e89f829fb031af2cf50056ea1246559fee
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      - DOMAIN=${DOMAIN:?set DOMAIN in .env to the site hostname}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data  # certificates and keys: keep them (Let's Encrypt has rate limits)
+      - caddy_config:/config
+    networks:
+      default:
+        ipv4_address: ${CADDY_IP:-172.30.240.20}
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:

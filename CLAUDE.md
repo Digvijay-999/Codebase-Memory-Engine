@@ -10,7 +10,7 @@ ContextForge is an AI codebase memory engine. It clones a Git repo, chunks and e
 
 - **Backend** (`backend/`, Python 3.12 per `runtime.txt`; Docker image uses 3.11): FastAPI, Uvicorn, GitPython, ChromaDB (`PersistentClient`), ONNX Runtime + HuggingFace `tokenizers` (CPU-only, **no PyTorch / sentence-transformers**), OpenAI SDK pointed at OpenRouter, httpx, Pydantic, python-dotenv.
 - **Frontend** (`frontend/`): React 19, Vite 8, Tailwind CSS v4 (`@tailwindcss/vite`, theme tokens in `src/styles/tokens.css`), React Router 7, Framer Motion, lucide-react, react-markdown + remark-gfm, Spline + `@paper-design/shaders-react` (landing page only). Mostly `.jsx`; a few `.tsx` files with no `tsconfig`.
-- **Infra**: `docker-compose.yml` — nginx serves the Vite build on :3000 and proxies `/api/` to `BACKEND_URL` (`frontend/nginx.conf.template`, rendered by envsubst; security headers + CSP); backend runs as uid 10001, host port `127.0.0.1:8001` for debugging only; base images pinned by digest; named volumes for `chroma_db` and `repos` (owned by 10001). Fixed network subnet so the backend trusts `X-Forwarded-For` only from the proxy IP.
+- **Infra**: `docker-compose.yml` — nginx serves the Vite build on :3000 and proxies `/api/` to `BACKEND_URL` (`frontend/nginx.conf.template`, rendered by envsubst; security headers + CSP); backend runs as uid 10001, host port `127.0.0.1:8001` for debugging only; base images pinned by digest; named volumes for `chroma_db` and `repos` (owned by 10001). Fixed network subnet so the backend trusts `X-Forwarded-For` only from the proxy IP. Production (`compose.prod.yml`, see `DEPLOY.md`): Caddy (`Caddyfile`, HTTPS for `DOMAIN`, HSTS) is the only service publishing ports; nginx trusts `X-Forwarded-For` only from Caddy's fixed IP (`REAL_IP_FROM`); `APP_ENV=production`, debug routes off, json-file log rotation. `scripts/` has `deploy.sh`, `backup-volumes.sh`, `restore-volumes.sh` (Linux bash; they follow `COMPOSE_FILE` from `.env`).
 
 ## Structure
 
@@ -85,7 +85,7 @@ npm run lint       # ESLint: covers .js/.jsx only, NOT .tsx
 ```
 The UI calls the API on its own origin at `/api` (nginx or the Vite dev proxy forwards it). `VITE_API_URL` is an optional build-time override for hosting the frontend elsewhere; then also set the backend's `ALLOWED_ORIGINS` (empty by default). The CSP adds that origin to `connect-src` automatically (`frontend/api-origin.envsh`). Spline's scene/WASM and the fonts are self-hosted in `frontend/public/`; any new external asset needs a CSP change.
 
-Docker: `docker compose up --build` (key via root `.env` or `backend/.env`); `docker compose down -v` wipes the index and clones.
+Docker: `docker compose up --build` (key via root `.env` or `backend/.env`); `docker compose down -v` wipes the index and clones. Production on one host: `DEPLOY.md`.
 
 ## Testing and debugging
 

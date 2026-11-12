@@ -6,6 +6,9 @@ server {
     root /usr/share/nginx/html;
     index index.html;
     server_tokens off;
+    # Client IP from X-Forwarded-For only when the peer is REAL_IP_FROM (Caddy in compose.prod.yml; 127.0.0.1 = none).
+    set_real_ip_from ${REAL_IP_FROM};
+    real_ip_header X-Forwarded-For;
 
     # Security headers. nginx drops these in any location that has its own add_header, so /assets/ repeats them.
     add_header X-Content-Type-Options "nosniff" always;
