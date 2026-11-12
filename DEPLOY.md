@@ -149,6 +149,27 @@ A 1 GB VM can run the stack, but building the images there is slow and can run o
 
 To update later, use these steps instead of `scripts/deploy.sh`, which builds on the server: run `git pull` on the server, run `ship-images.sh` from your machine, then run `docker compose up -d --no-build --wait`.
 
+## Azure VM notes
+
+Tested on a `Standard_B2ats_v2` (x86_64, 2 vCPU, 1 GB RAM) with Ubuntu 24.04, using the low-memory steps above.
+
+- **Create the VM from Cloud Shell** (bash). The DNS name label gives you a free hostname, `<label>.<region>.cloudapp.azure.com`. Use it as `DOMAIN`, and you don't need a domain of your own:
+
+  ```bash
+  az group create -n contextforge-rg -l <region>
+  az vm create -g contextforge-rg -n contextforge --image Ubuntu2404 --size Standard_B2ats_v2 \
+    --admin-username azureuser --ssh-key-values ~/.ssh/id_ed25519.pub \
+    --public-ip-sku Standard --public-ip-address-dns-name <label> --os-disk-size-gb 64
+  az vm open-port -g contextforge-rg -n contextforge --port 80,443 --priority 1010
+  ```
+
+  To add the label to an existing VM: Portal → the VM's public IP → Configuration → DNS name label.
+- **Region policy:** some subscriptions (for example Azure for Students) may only deploy to an allowed list of regions. If `az vm create` fails with a `RequestDisallowedBy...` policy error, pick a region from the list in the error message. The region is part of the DNS name, so choose it before you set the label.
+- **Network security group:** the VM's NSG must allow 22, 80 and 443, in addition to ufw (step 2). The Azure Ubuntu image has no extra iptables rules, so HTTPS worked with only ufw and the NSG.
+- **No temp disk:** the `*ats_v2` sizes have no resource disk, so the swapfile goes on the OS disk (`/swapfile`), as in the low-memory steps.
+- **Memory seen on 1 GB + 4 GB swap:** about 490 MB used and about 400 MB still available while answering a Chat question and generating a Docs report (backend about 270 MB, Caddy about 60 MB, nginx under 10 MB), with under 200 MB of swap in use. Indexing a large new repo embeds all of its chunks in memory and wasn't measured, so watch `free -h` the first time.
+- **From Windows:** Git Bash's `ssh`/`scp` accept the downloaded `.pem` key as is. `scripts/ship-images.sh` runs from Git Bash with Docker Desktop. A `backend/.env` saved with CRLF line endings is fine, because Compose strips the `\r`.
+
 ## Notes
 
 - **HSTS** is set for one year with `includeSubDomains` (in `Caddyfile`). Once browsers have seen it, they refuse plain HTTP for `DOMAIN` and its subdomains. Remove `includeSubDomains` if subdomains of `DOMAIN` must stay on HTTP.
